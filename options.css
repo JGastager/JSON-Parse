@@ -9,8 +9,8 @@
   --jp-text:    #f0f0f0;
   --jp-soft: rgba(255, 255, 255, 0.05);
   --jp-primary: #38bdf8;
-  --jp-primary-muted: #38bdf828;
-  --jp-primary-hover: #38bdf838;
+  --jp-primary-muted: rgba(56, 189, 248, 0.2);
+  --jp-primary-hover: rgba(56, 189, 248, 0.3);
 }
 
 *,

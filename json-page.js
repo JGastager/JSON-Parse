@@ -46,8 +46,8 @@
   --jp-guides: rgba(255, 255, 255, 0.1);
   --jp-guides-hover: rgba(255, 255, 255, 0.2);
   --jp-primary: #38bdf8;
-  --jp-primary-muted: #38bdf828;
-  --jp-primary-hover: #38bdf838;
+  --jp-primary-muted: rgba(56, 189, 248, 0.2);
+  --jp-primary-hover: rgba(56, 189, 248, 0.3);
   --json-key:     ${t.key};
   --json-string:  ${t.string};
   --json-number:  ${t.number};
@@ -169,8 +169,9 @@
   top: 0;
   bottom: 0;
   width: 1px;
-  background: var(--jp-guides);
+  border-left: 1px solid var(--jp-guides);
   pointer-events: none;
+  transition: border-color 0.2s ease;
 }
 
 .json-closing::before {
@@ -183,8 +184,9 @@
   height: 12px;
   border-left: 1px solid var(--jp-guides);
   border-bottom: 1px solid var(--jp-guides);
-  border-radius: 0 0 0 2px;
+  border-radius: 0 0 0 3px;
   pointer-events: none;
+  transition: border-color 0.2s ease;
 }
 
 .json-children .json-closing::before {
@@ -192,10 +194,20 @@
 }
 
 .json-children:hover::before {
-  background: var(--jp-guides-hover);
+  border-color: var(--jp-guides-hover);
+}
+
+.json-collapsible:hover + .json-children::before,
+.json-collapsible:hover + .json-children + .json-closing::before  {
+  border-color: var(--jp-guides-hover);
 }
 
 .json-children:hover + .json-closing::before {
+  border-color: var(--jp-guides-hover);
+}
+
+.json-closing:hover::before,
+.json-children:has( + .json-closing:hover)::before {
   border-color: var(--jp-guides-hover);
 }
 
@@ -416,7 +428,6 @@
         settingsBtn.href = chrome.runtime.getURL('options.html');
         settingsBtn.target = '_blank';
         settingsBtn.className = 'btn';
-        settingsBtn.title = 'Settings';
         settingsBtn.appendChild(createEl('span', 'i-gear'));
         root.appendChild(settingsBtn);
 
