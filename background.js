@@ -69,4 +69,7 @@ chrome.runtime.onMessage.addListener((message, sender) => {
   if (message.action === 'refreshJson' && sender.tab) {
     updateIcon(sender.tab.id);
   }
+  if (message.action === 'openOptions') {
+    chrome.runtime.openOptionsPage();
+  }
 });

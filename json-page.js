@@ -424,11 +424,11 @@
         buildJsonTree(tree, parsed, null, 0, true);
         body.appendChild(tree);
 
-        const settingsBtn = createEl('a');
-        settingsBtn.href = chrome.runtime.getURL('options.html');
-        settingsBtn.target = '_blank';
+        const settingsBtn = createEl('div');
         settingsBtn.className = 'btn';
+        settingsBtn.title = 'Open settings';
         settingsBtn.appendChild(createEl('span', 'i-gear'));
+        settingsBtn.addEventListener('click', () => chrome.runtime.sendMessage({ action: 'openOptions' }));
         root.appendChild(settingsBtn);
 
         root.appendChild(body);

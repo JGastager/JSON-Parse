@@ -3,7 +3,7 @@
     "visualstudio": { "key": "#9CDCFE", "string": "#CE9178", "number": "#B5CEA8", "boolean": "#569CD6", "null": "#569CD6", "bracket": "#FFD700", "brace": "#D4D4D4", "punct": "#D4D4D4" },
     "monokai":      { "key": "#A6E22E", "string": "#E6DB74", "number": "#AE81FF", "boolean": "#66D9E8", "null": "#F92672", "bracket": "#66D9E8", "brace": "#F8F8F2", "punct": "#F8F8F2" },
     "jetbrains":    { "key": "#9876AA", "string": "#6A8759", "number": "#6897BB", "boolean": "#CC7832", "null": "#CC7832", "bracket": "#6897BB", "brace": "#FFC66D", "punct": "#A9B7C6" },
-    "brackets":     { "key": "#7FC1CA", "string": "#A8FF60", "number": "#FF9DA4", "boolean": "#FFAD00", "null": "#FF6C60", "bracket": "#FF9DA4", "brace": "#7FC1CA",  "punct": "#DECDCE" },
+    "brackets":     { "key": "#7FC1CA", "string": "#A8FF60", "number": "#FF9DA4", "boolean": "#FFAD00", "null": "#FF6C60", "bracket": "#FF9DA4", "brace": "#7FC1CA", "punct": "#DECDCE" },
     "dracula":      { "key": "#8BE9FD", "string": "#F1FA8C", "number": "#BD93F9", "boolean": "#FF79C6", "null": "#FF5555", "bracket": "#F8F8F2", "brace": "#FFB86C", "punct": "#F8F8F2" },
     "onedark":      { "key": "#61AFEF", "string": "#98C379", "number": "#D19A66", "boolean": "#C678DD", "null": "#E06C75", "bracket": "#56B6C2", "brace": "#ABB2BF", "punct": "#ABB2BF" },
     "nord":         { "key": "#88C0D0", "string": "#A3BE8C", "number": "#B48EAD", "boolean": "#81A1C1", "null": "#BF616A", "bracket": "#81A1C1", "brace": "#D8DEE9", "punct": "#D8DEE9" },
