@@ -1,22 +1,22 @@
-
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap');
 
+/* ── Design tokens (sidepanel / options context) ───────────────────────── */
+
 :root {
-  /* UI chrome */
-  --jp-bg:      #171717;
-  --jp-body:     #303030;
-  --jp-hover:   #404040;
-  --jp-dimmed:   #707070;
-  --jp-muted:   #a0a0a0;
-  --jp-text:    #f0f0f0;
-  --jp-soft: rgba(255, 255, 255, 0.05);
-  --jp-guides: rgba(255, 255, 255, 0.1);
+  --jp-bg:           #171717;
+  --jp-body:         #303030;
+  --jp-hover:        #404040;
+  --jp-dimmed:       #707070;
+  --jp-muted:        #a0a0a0;
+  --jp-text:         #f0f0f0;
+  --jp-soft:         rgba(255, 255, 255, 0.05);
+  --jp-guides:       rgba(255, 255, 255, 0.1);
   --jp-guides-hover: rgba(255, 255, 255, 0.2);
-  --jp-primary: #38bdf8;
+  --jp-primary:      #38bdf8;
   --jp-primary-muted: rgba(56, 189, 248, 0.2);
   --jp-primary-hover: rgba(56, 189, 248, 0.3);
 
-  /* Material Theme JSON token colors */
+  /* Default JSON token colors (Material theme) */
   --json-key:     #82AAFF;
   --json-string:  #C3E88D;
   --json-number:  #F78C6C;
@@ -28,9 +28,51 @@
   --json-toggle:  var(--jp-muted);
 }
 
+/* ── Design tokens (json-page full-page takeover context) ──────────────── */
+
+#jp-page-root {
+  --jp-bg:           #171717;
+  --jp-body:         #303030;
+  --jp-hover:        #404040;
+  --jp-dimmed:       #707070;
+  --jp-muted:        #a0a0a0;
+  --jp-text:         #f0f0f0;
+  --jp-soft:         rgba(255, 255, 255, 0.05);
+  --jp-guides:       rgba(255, 255, 255, 0.1);
+  --jp-guides-hover: rgba(255, 255, 255, 0.2);
+  --jp-primary:      #38bdf8;
+  --jp-primary-muted: rgba(56, 189, 248, 0.2);
+  --jp-primary-hover: rgba(56, 189, 248, 0.3);
+  --json-toggle:     var(--jp-muted);
+
+  /* Token colors are injected dynamically via #jp-theme-vars <style> */
+
+  position: fixed;
+  inset: 0;
+  background: var(--jp-bg);
+  color: var(--jp-text);
+  font-family: 'Roboto', Arial, sans-serif;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 2147483647;
+  box-sizing: border-box;
+}
+
+/* ── Global reset ──────────────────────────────────────────────────────── */
+
 *,
 *::before,
 *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+#jp-page-root *,
+#jp-page-root *::before,
+#jp-page-root *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -51,7 +93,7 @@ body {
   color: var(--jp-text);
 }
 
-/* -- Nav -------------------------------------------- */
+/* ── Sidepanel — Nav ───────────────────────────────────────────────────── */
 
 nav {
   background-color: var(--jp-body);
@@ -79,6 +121,7 @@ nav ul {
 nav ul::-webkit-scrollbar {
   height: 3px;
 }
+
 nav ul::-webkit-scrollbar-thumb {
   background: var(--jp-muted);
   border-radius: 2px;
@@ -115,7 +158,7 @@ nav ul li.active {
   border-radius: 3px;
 }
 
-/* -- Main ------------------------------------------- */
+/* ── Sidepanel — Main ──────────────────────────────────────────────────── */
 
 main {
   background: var(--jp-bg);
@@ -130,12 +173,13 @@ main {
 main::-webkit-scrollbar {
   width: 5px;
 }
+
 main::-webkit-scrollbar-thumb {
   background: var(--jp-muted);
   border-radius: 3px;
 }
 
-/* -- Empty state ------------------------------------ */
+/* ── Sidepanel — Empty state ───────────────────────────────────────────── */
 
 .empty-state {
   display: flex;
@@ -164,7 +208,21 @@ main::-webkit-scrollbar-thumb {
   color: var(--jp-primary);
 }
 
-/* -- JSON tree -------------------------------------- */
+/* ── json-page — Scrollable body ───────────────────────────────────────── */
+
+#jp-page-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+  padding: 14px 16px 24px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--jp-muted) transparent;
+}
+
+#jp-page-body::-webkit-scrollbar { width: 5px; height: 5px; }
+#jp-page-body::-webkit-scrollbar-thumb { background: var(--jp-muted); border-radius: 3px; }
+
+/* ── Shared — JSON tree ────────────────────────────────────────────────── */
 
 .json-tree {
   font-family: 'Roboto Mono', 'Consolas', monospace;
@@ -173,6 +231,9 @@ main::-webkit-scrollbar-thumb {
   overflow-x: auto;
 }
 
+.json-tree.wrap-strings .json-row { white-space: normal; }
+.json-tree.wrap-strings .json-string { white-space: normal; word-break: break-word; }
+
 .json-row {
   display: block;
   border-radius: 3px;
@@ -180,22 +241,8 @@ main::-webkit-scrollbar-thumb {
   white-space: nowrap;
 }
 
-.json-tree.wrap-strings .json-row {
-  white-space: normal;
-}
-
-.json-tree.wrap-strings .json-string {
-  white-space: normal;
-  word-break: break-word;
-}
-
-.json-row.json-collapsible {
-  cursor: pointer;
-}
-
-.json-row.json-collapsible:hover {
-  background: var(--jp-soft);
-}
+.json-row.json-collapsible { cursor: pointer; }
+.json-row.json-collapsible:hover { background: var(--jp-soft); }
 
 /* Token colors */
 .json-key     { color: var(--json-key); }
@@ -247,14 +294,10 @@ main::-webkit-scrollbar-thumb {
   flex-shrink: 0;
 }
 
-.json-toggle.open::before {
-  transform: rotate(90deg);
-}
+.json-toggle.open::before { transform: rotate(90deg); }
 
 .json-children,
-.json-closing {
-  position: relative;
-}
+.json-closing { position: relative; }
 
 .json-children::before {
   content: '';
@@ -292,7 +335,7 @@ main::-webkit-scrollbar-thumb {
 }
 
 .json-collapsible:hover + .json-children::before,
-.json-collapsible:hover + .json-children + .json-closing::before  {
+.json-collapsible:hover + .json-children + .json-closing::before {
   border-color: var(--jp-guides-hover);
 }
 
@@ -301,7 +344,7 @@ main::-webkit-scrollbar-thumb {
 }
 
 .json-closing:hover::before,
-.json-children:has( + .json-closing:hover)::before {
+.json-children:has(+ .json-closing:hover)::before {
   border-color: var(--jp-guides-hover);
 }
 
@@ -311,12 +354,19 @@ main::-webkit-scrollbar-thumb {
   font-style: italic;
 }
 
+/* json-page summary uses muted (lighter) instead of dimmed */
+#jp-page-root .json-summary {
+  color: var(--jp-muted);
+}
+
 .json-summary .json-brace,
 .json-summary .json-bracket,
 .json-summary .json-punct {
   font-style: normal;
   font-size: 13px;
 }
+
+/* ── Shared — Settings button ──────────────────────────────────────────── */
 
 .btn {
   display: inline-flex;
@@ -336,6 +386,17 @@ main::-webkit-scrollbar-thumb {
   background-color: var(--jp-soft);
 }
 
+/* json-page btn is fixed-positioned in the top-right corner */
+#jp-page-root .btn {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 1;
+  padding: 6px;
+}
+
+/* ── Shared — Gear icon ────────────────────────────────────────────────── */
+
 .i-gear {
   background-color: var(--jp-text);
   height: 18px;
@@ -350,3 +411,77 @@ main::-webkit-scrollbar-thumb {
   mask-position: center;
 }
 
+/* ── json-page — Context menu ──────────────────────────────────────────── */
+
+#jp-context-menu {
+  position: fixed;
+  background: var(--jp-body);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 4px;
+  min-width: 190px;
+  z-index: 9999999;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.65), 0 2px 6px rgba(0, 0, 0, 0.4);
+  font-family: 'Roboto', Arial, sans-serif;
+  font-size: 13px;
+  animation: jp-ctx-appear 0.12s cubic-bezier(0.2, 0, 0, 1) forwards;
+}
+
+@keyframes jp-ctx-appear {
+  from { opacity: 0; transform: scale(0.96) translateY(-6px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+.jp-ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  color: var(--jp-text);
+  user-select: none;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.jp-ctx-item:hover {
+  background: var(--jp-primary-muted);
+  color: var(--jp-primary);
+}
+
+.jp-ctx-item:active {
+  background: var(--jp-primary-hover);
+}
+
+.jp-ctx-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  background-color: var(--jp-muted);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  transition: background-color 0.1s ease;
+}
+
+.jp-ctx-item:hover .jp-ctx-icon {
+  background-color: var(--jp-primary);
+}
+
+.jp-ctx-icon-key {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M243.31,90.91l-74.22-74.22A16,16,0,0,0,157.78,12H48A16,16,0,0,0,32,28V156.69A16,16,0,0,0,36.69,168l74.22,74.22a16,16,0,0,0,22.62,0L243.31,133.53a16,16,0,0,0,0-22.62ZM84,96A12,12,0,1,1,96,84,12,12,0,0,1,84,96Z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M243.31,90.91l-74.22-74.22A16,16,0,0,0,157.78,12H48A16,16,0,0,0,32,28V156.69A16,16,0,0,0,36.69,168l74.22,74.22a16,16,0,0,0,22.62,0L243.31,133.53a16,16,0,0,0,0-22.62ZM84,96A12,12,0,1,1,96,84,12,12,0,0,1,84,96Z'/%3E%3C/svg%3E");
+}
+
+.jp-ctx-icon-value {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M216,32H88a8,8,0,0,0-8,8V80H40a8,8,0,0,0-8,8V216a8,8,0,0,0,8,8H168a8,8,0,0,0,8-8V176h40a8,8,0,0,0,8-8V40A8,8,0,0,0,216,32ZM160,208H48V96H160Zm48-48H176V88a8,8,0,0,0-8-8H96V48H208Z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M216,32H88a8,8,0,0,0-8,8V80H40a8,8,0,0,0-8,8V216a8,8,0,0,0,8,8H168a8,8,0,0,0,8-8V176h40a8,8,0,0,0,8-8V40A8,8,0,0,0,216,32ZM160,208H48V96H160Zm48-48H176V88a8,8,0,0,0-8-8H96V48H208Z'/%3E%3C/svg%3E");
+}
+
+.jp-ctx-icon-path {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M137.54,186.36a8,8,0,0,1,0,11.31l-9.94,10A56,56,0,0,1,48.38,128.4L72.5,104.28A56,56,0,0,1,149.31,102a8,8,0,1,1-10.64,12,40,40,0,0,0-54.85,1.63L59.7,139.72a40,40,0,0,0,56.58,56.58l9.94-9.94A8,8,0,0,1,137.54,186.36Zm70.08-138A56.08,56.08,0,0,0,127.79,48.42l-9.94,9.94a8,8,0,1,0,11.31,11.31l9.94-9.94a40,40,0,0,1,56.58,56.58L171.56,140.43A40,40,0,0,1,116.71,142a8,8,0,1,0-10.64,12,56,56,0,0,0,76.81-2.26l24.13-24.12A56.08,56.08,0,0,0,207.62,48.38Z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M137.54,186.36a8,8,0,0,1,0,11.31l-9.94,10A56,56,0,0,1,48.38,128.4L72.5,104.28A56,56,0,0,1,149.31,102a8,8,0,1,1-10.64,12,40,40,0,0,0-54.85,1.63L59.7,139.72a40,40,0,0,0,56.58,56.58l9.94-9.94A8,8,0,0,1,137.54,186.36Zm70.08-138A56.08,56.08,0,0,0,127.79,48.42l-9.94,9.94a8,8,0,1,0,11.31,11.31l9.94-9.94a40,40,0,0,1,56.58,56.58L171.56,140.43A40,40,0,0,1,116.71,142a8,8,0,1,0-10.64,12,56,56,0,0,0,76.81-2.26l24.13-24.12A56.08,56.08,0,0,0,207.62,48.38Z'/%3E%3C/svg%3E");
+}

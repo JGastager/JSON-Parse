@@ -23,7 +23,7 @@
     "default_icon": "icon-dark.png"
   },
   "web_accessible_resources": [
-    { "resources": ["themes.json", "icon-active.png", "icon-light.png", "icon-dark.png"], "matches": ["<all_urls>"] }
+    { "resources": ["themes.json", "style.css", "icon-active.png", "icon-light.png", "icon-dark.png"], "matches": ["<all_urls>"] }
   ],
   "content_scripts": [
     {
