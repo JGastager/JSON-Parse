@@ -278,7 +278,66 @@ function setupContextMenu(root) {
     root.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideMenu(); });
 }
 
-// -- Tab/panel rendering ---------------------------------------------------
+// -- Path tooltip -----------------------------------------------------------
+
+function setupPathTooltip(root) {
+    let tooltip = document.getElementById('jp-path-tooltip');
+    if (!tooltip) {
+        tooltip = document.createElement('div');
+        tooltip.id = 'jp-path-tooltip';
+        document.body.appendChild(tooltip);
+    }
+
+    let hoverTimer = null;
+    let currentRow = null;
+
+    function show(path, x, y) {
+        tooltip.textContent = path;
+        tooltip.classList.add('visible');
+        position(x, y);
+    }
+
+    function hide() {
+        clearTimeout(hoverTimer);
+        hoverTimer = null;
+        currentRow = null;
+        tooltip.classList.remove('visible');
+    }
+
+    function position(x, y) {
+        const gap = 12;
+        tooltip.style.left = '0px';
+        tooltip.style.top = '0px';
+        const rect = tooltip.getBoundingClientRect();
+        const left = Math.min(x + gap, window.innerWidth - rect.width - 8);
+        const top = y - rect.height - gap;
+        tooltip.style.left = `${left}px`;
+        tooltip.style.top = `${top < 8 ? y + gap : top}px`;
+    }
+
+    root.addEventListener('mouseover', (e) => {
+        if (!e.target.classList.contains('json-key')) { hide(); return; }
+        const row = e.target.closest('.json-row');
+        if (!row || !row._jpData || !row._jpData.path) { hide(); return; }
+        if (row === currentRow) return;
+        clearTimeout(hoverTimer);
+        currentRow = row;
+        hoverTimer = setTimeout(() => show(row._jpData.path, e.clientX, e.clientY), 500);
+    });
+
+    root.addEventListener('mouseout', (e) => {
+        const row = e.target.closest('.json-row');
+        if (row && row === currentRow && !row.contains(e.relatedTarget)) {
+            clearTimeout(hoverTimer);
+            hoverTimer = null;
+            currentRow = null;
+            tooltip.classList.remove('visible');
+        }
+    });
+
+    root.addEventListener('mouseleave', hide);
+}
+
 
 function getRootTypeBadge(value) {
     if (value === null) return 'null';
@@ -381,6 +440,7 @@ function refresh() {
 
 document.addEventListener('DOMContentLoaded', () => {
     setupContextMenu(document.body);
+    setupPathTooltip(document.body);
 
     fetch(chrome.runtime.getURL('themes.json'))
         .then(r => r.json())

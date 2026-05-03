@@ -384,6 +384,28 @@ main::-webkit-scrollbar-thumb {
   mask-position: center;
 }
 
+/* ── Path tooltip ──────────────────────────────────────────────────────── */
+
+#jp-path-tooltip {
+  position: fixed;
+  pointer-events: none;
+  background: var(--jp-body);
+  color: var(--jp-text);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-family: 'Roboto Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 9999998;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+#jp-path-tooltip.visible {
+  opacity: 1;
+}
+
 /* ── json-page — Context menu ──────────────────────────────────────────── */
 
 #jp-context-menu {
