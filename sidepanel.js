@@ -436,11 +436,172 @@ function refresh() {
     });
 }
 
+// -- Search -----------------------------------------------------------------
+
+const searchState = { matches: [], current: -1 };
+
+function clearSearchHighlights() {
+    document.querySelectorAll('.search-highlight').forEach(el => {
+        const parent = el.parentNode;
+        parent.replaceChild(document.createTextNode(el.textContent), el);
+        parent.normalize();
+    });
+    searchState.matches = [];
+    searchState.current = -1;
+}
+
+function highlightTextInSpan(span, query) {
+    const text = span.textContent;
+    const lower = text.toLowerCase();
+    const q = query.toLowerCase();
+    const matches = [];
+    let idx = 0;
+    while ((idx = lower.indexOf(q, idx)) !== -1) {
+        matches.push(idx);
+        idx += q.length;
+    }
+    if (!matches.length) return;
+
+    const frag = document.createDocumentFragment();
+    let last = 0;
+    matches.forEach(start => {
+        if (start > last) frag.appendChild(document.createTextNode(text.slice(last, start)));
+        const mark = document.createElement('mark');
+        mark.className = 'search-highlight';
+        mark.textContent = text.slice(start, start + query.length);
+        frag.appendChild(mark);
+        last = start + query.length;
+    });
+    if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+    span.replaceChildren(frag);
+    span.querySelectorAll('.search-highlight').forEach(m => searchState.matches.push(m));
+}
+
+function runSearch(query) {
+    clearSearchHighlights();
+    if (!query) return;
+
+    // Ensure all panels' ancestor rows are expanded so matches are visible
+    document.querySelectorAll('.json-panel').forEach(panel => {
+        panel.querySelectorAll('.json-key, .json-string, .json-number, .json-boolean, .json-null').forEach(span => {
+            highlightTextInSpan(span, query);
+        });
+    });
+
+    // Expand any collapsed ancestor that contains a match
+    searchState.matches.forEach(mark => {
+        let el = mark.parentElement;
+        while (el) {
+            if (el.classList.contains('json-collapsible') && el._jsonCollapsible) {
+                const c = el._jsonCollapsible;
+                if (c.childContainer.style.display === 'none') {
+                    c.childContainer.style.display = '';
+                    c.closingRow.style.display = '';
+                    c.summary.style.display = 'none';
+                    c.toggle.classList.add('open');
+                }
+            }
+            // Also expand hidden panels (switch to the tab containing the first match)
+            el = el.parentElement;
+        }
+    });
+
+    updateSearchCount();
+    if (searchState.matches.length) navigateMatch(0);
+}
+
+function navigateMatch(index) {
+    searchState.matches.forEach(m => m.classList.remove('active'));
+    if (!searchState.matches.length) return;
+    searchState.current = (index + searchState.matches.length) % searchState.matches.length;
+    const active = searchState.matches[searchState.current];
+    active.classList.add('active');
+
+    // Switch to the panel containing this match
+    const panel = active.closest('.json-panel');
+    if (panel) {
+        const panels = Array.from(document.querySelectorAll('.json-panel'));
+        const tabs = Array.from(document.querySelectorAll('#json-tabs li'));
+        const pi = panels.indexOf(panel);
+        if (pi !== -1 && panel.style.display === 'none') {
+            panels.forEach(p => { p.style.display = 'none'; });
+            tabs.forEach(t => t.classList.remove('active'));
+            panel.style.display = '';
+            if (tabs[pi]) tabs[pi].classList.add('active');
+        }
+    }
+
+    active.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    updateSearchCount();
+}
+
+function updateSearchCount() {
+    const countEl = document.getElementById('search-count');
+    const total = searchState.matches.length;
+    if (!total) {
+        const input = document.getElementById('search-input');
+        countEl.textContent = input.value ? '0 / 0' : '';
+        countEl.classList.toggle('no-match', !!input.value);
+    } else {
+        countEl.textContent = `${searchState.current + 1} / ${total}`;
+        countEl.classList.remove('no-match');
+    }
+    const prev = document.getElementById('search-prev');
+    const next = document.getElementById('search-next');
+    prev.disabled = total < 2;
+    next.disabled = total < 2;
+}
+
+function setupSearch() {
+    const bar = document.getElementById('search-bar');
+    const input = document.getElementById('search-input');
+    const prevBtn = document.getElementById('search-prev');
+    const nextBtn = document.getElementById('search-next');
+    const closeBtn = document.getElementById('search-close');
+
+    function openSearch() {
+        bar.classList.add('open');
+        document.body.classList.add('search-open');
+        input.focus();
+        input.select();
+    }
+
+    function closeSearch() {
+        bar.classList.remove('open');
+        document.body.classList.remove('search-open');
+        clearSearchHighlights();
+        input.value = '';
+        document.getElementById('search-count').textContent = '';
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+            e.preventDefault();
+            openSearch();
+        }
+        if (e.key === 'Escape' && bar.classList.contains('open')) {
+            closeSearch();
+        }
+    }, true);
+
+    input.addEventListener('input', () => runSearch(input.value));
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.shiftKey ? navigateMatch(searchState.current - 1) : navigateMatch(searchState.current + 1);
+        }
+    });
+
+    prevBtn.addEventListener('click', () => navigateMatch(searchState.current - 1));
+    nextBtn.addEventListener('click', () => navigateMatch(searchState.current + 1));
+    closeBtn.addEventListener('click', closeSearch);
+}
+
 // -- Boot -------------------------------------------------------------------
 
 document.addEventListener('DOMContentLoaded', () => {
     setupContextMenu(document.body);
     setupPathTooltip(document.body);
+    setupSearch();
 
     fetch(chrome.runtime.getURL('themes.json'))
         .then(r => r.json())

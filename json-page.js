@@ -355,6 +355,158 @@
         root.addEventListener('mouseleave', hide);
     }
 
+    // ── Search ───────────────────────────────────────────────────────────────
+    function setupSearch(root, header, headerBtns, body) {
+        // Search toggle button in header
+        const searchBtn = createEl('div', 'btn');
+        searchBtn.title = 'Search (Ctrl+F)';
+        searchBtn.appendChild(createEl('span', 'i-search-btn'));
+        headerBtns.prepend(searchBtn);
+
+        const wrap = createEl('div');
+        wrap.id = 'search-input-wrap';
+        wrap.style.display = 'none';
+
+        const icon = createEl('span', 'i-search');
+        const input = document.createElement('input');
+        input.id = 'search-input';
+        input.type = 'text';
+        input.placeholder = 'Search keys & values…';
+        input.spellcheck = false;
+        input.autocomplete = 'off';
+        const countEl = createEl('span');
+        countEl.id = 'search-count';
+        const prevBtn = createEl('button', 'search-nav-btn');
+        prevBtn.title = 'Previous match';
+        prevBtn.appendChild(createEl('span', 'i-search-prev'));
+        const nextBtn = createEl('button', 'search-nav-btn');
+        nextBtn.title = 'Next match';
+        nextBtn.appendChild(createEl('span', 'i-search-next'));
+        const closeBtn = document.createElement('button');
+        closeBtn.id = 'search-close';
+        closeBtn.title = 'Close search';
+        closeBtn.appendChild(createEl('span', 'i-search-close'));
+
+        wrap.append(icon, input, countEl, prevBtn, nextBtn, closeBtn);
+
+        // Insert wrap before the settings button (last child of header)
+        header.insertBefore(wrap, header.lastElementChild);
+
+        const state = { matches: [], current: -1 };
+
+        function clearHighlights() {
+            root.querySelectorAll('.search-highlight').forEach(el => {
+                const parent = el.parentNode;
+                parent.replaceChild(document.createTextNode(el.textContent), el);
+                parent.normalize();
+            });
+            state.matches = [];
+            state.current = -1;
+        }
+
+        function highlightSpan(span, query) {
+            const text = span.textContent;
+            const lower = text.toLowerCase();
+            const q = query.toLowerCase();
+            const positions = [];
+            let idx = 0;
+            while ((idx = lower.indexOf(q, idx)) !== -1) { positions.push(idx); idx += q.length; }
+            if (!positions.length) return;
+            const frag = document.createDocumentFragment();
+            let last = 0;
+            positions.forEach(start => {
+                if (start > last) frag.appendChild(document.createTextNode(text.slice(last, start)));
+                const mark = document.createElement('mark');
+                mark.className = 'search-highlight';
+                mark.textContent = text.slice(start, start + query.length);
+                frag.appendChild(mark);
+                last = start + query.length;
+            });
+            if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+            span.replaceChildren(frag);
+            span.querySelectorAll('.search-highlight').forEach(m => state.matches.push(m));
+        }
+
+        function runSearch(query) {
+            clearHighlights();
+            if (!query) { updateCount(); return; }
+            root.querySelectorAll('.json-key, .json-string, .json-number, .json-boolean, .json-null').forEach(span => {
+                highlightSpan(span, query);
+            });
+            state.matches.forEach(mark => {
+                let el = mark.parentElement;
+                while (el && el !== root) {
+                    if (el.classList.contains('json-collapsible') && el._jsonCollapsible) {
+                        const c = el._jsonCollapsible;
+                        if (c.childContainer.style.display === 'none') {
+                            c.childContainer.style.display = '';
+                            c.closingRow.style.display = '';
+                            c.summary.style.display = 'none';
+                            c.toggle.classList.add('open');
+                        }
+                    }
+                    el = el.parentElement;
+                }
+            });
+            updateCount();
+            if (state.matches.length) navigateTo(0);
+        }
+
+        function navigateTo(index) {
+            state.matches.forEach(m => m.classList.remove('active'));
+            if (!state.matches.length) return;
+            state.current = (index + state.matches.length) % state.matches.length;
+            const active = state.matches[state.current];
+            active.classList.add('active');
+            active.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            updateCount();
+        }
+
+        function updateCount() {
+            const total = state.matches.length;
+            if (!total) {
+                countEl.textContent = input.value ? '0 / 0' : '';
+                countEl.classList.toggle('no-match', !!input.value);
+            } else {
+                countEl.textContent = `${state.current + 1} / ${total}`;
+                countEl.classList.remove('no-match');
+            }
+            prevBtn.disabled = total < 2;
+            nextBtn.disabled = total < 2;
+        }
+
+        function openSearch() {
+            wrap.style.display = 'flex';
+            input.focus();
+            input.select();
+        }
+
+        function closeSearch() {
+            wrap.style.display = 'none';
+            clearHighlights();
+            input.value = '';
+            countEl.textContent = '';
+        }
+
+        searchBtn.addEventListener('click', openSearch);
+
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') { e.preventDefault(); openSearch(); }
+            if (e.key === 'Escape' && wrap.style.display !== 'none') closeSearch();
+        }, true);
+
+        input.addEventListener('input', () => runSearch(input.value));
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.shiftKey ? navigateTo(state.current - 1) : navigateTo(state.current + 1);
+            }
+        });
+
+        prevBtn.addEventListener('click', () => navigateTo(state.current - 1));
+        nextBtn.addEventListener('click', () => navigateTo(state.current + 1));
+        closeBtn.addEventListener('click', closeSearch);
+    }
+
     // ── Page takeover ────────────────────────────────────────────────────────
     function renderPage(themeKey, settings) {
         Object.assign(SETTINGS, settings);
@@ -363,6 +515,52 @@
         // Build root container
         const root = createEl('div');
         root.id = 'jp-page-root';
+
+        // Header
+        const header = createEl('div');
+        header.id = 'jp-page-header';
+
+        const titleEl = createEl('span');
+        titleEl.id = 'jp-page-title';
+        titleEl.textContent = location.pathname.split('/').pop() || 'JSON';
+
+        const settingsBtn = createEl('div');
+        settingsBtn.className = 'btn';
+        settingsBtn.title = 'Open settings';
+        settingsBtn.appendChild(createEl('span', 'i-gear'));
+        settingsBtn.addEventListener('click', () => chrome.runtime.sendMessage({ action: 'openOptions' }));
+
+        const rawBtn = createEl('div');
+        rawBtn.className = 'btn';
+        rawBtn.title = 'View raw JSON';
+        rawBtn.appendChild(createEl('span', 'i-raw'));
+        rawBtn.addEventListener('click', () => {
+            if (rawBtn.classList.contains('active')) {
+                rawBtn.classList.remove('active');
+                rawBtn.title = 'View raw JSON';
+                body.innerHTML = '';
+                const newTree = createEl('div', 'json-tree');
+                if (SETTINGS.wrapStrings) newTree.classList.add('wrap-strings');
+                buildJsonTree(newTree, parsed, null, 0, true);
+                body.appendChild(newTree);
+            } else {
+                rawBtn.classList.add('active');
+                rawBtn.title = 'View tree';
+                body.innerHTML = '';
+                const pre = createEl('pre', 'jp-raw-json');
+                pre.textContent = JSON.stringify(parsed, null, 2);
+                body.appendChild(pre);
+            }
+        });
+
+        header.appendChild(titleEl);
+
+        const headerBtns = createEl('div', 'jp-header-btns');
+        headerBtns.appendChild(rawBtn);
+        headerBtns.appendChild(settingsBtn);
+        header.appendChild(headerBtns);
+
+        root.appendChild(header);
 
         // Scrollable body
         const body = createEl('div');
@@ -373,13 +571,6 @@
         buildJsonTree(tree, parsed, null, 0, true);
         body.appendChild(tree);
 
-        const settingsBtn = createEl('div');
-        settingsBtn.className = 'btn';
-        settingsBtn.title = 'Open settings';
-        settingsBtn.appendChild(createEl('span', 'i-gear'));
-        settingsBtn.addEventListener('click', () => chrome.runtime.sendMessage({ action: 'openOptions' }));
-        root.appendChild(settingsBtn);
-
         root.appendChild(body);
 
         // Replace page content
@@ -389,6 +580,7 @@
         document.body.appendChild(root);
         setupContextMenu(root);
         setupPathTooltip(root);
+        setupSearch(root, header, headerBtns, body);
 
         // Update page title
         document.title = location.pathname.split('/').pop() || 'JSON Parse';
