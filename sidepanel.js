@@ -172,16 +172,19 @@ function buildJsonTree(container, value, key, depth, isLast, path = '$', arrayIn
         const isCollapsed = childContainer.style.display === 'none';
 
         if (e.shiftKey) {
-            // Toggle all collapsibles in the same parent scope to match this one
-            Array.from(container.children)
-                .filter(el => el.classList.contains('json-collapsible') && el._jsonCollapsible)
-                .forEach(sibling => {
-                    const c = sibling._jsonCollapsible;
-                    c.childContainer.style.display = isCollapsed ? '' : 'none';
-                    c.closingRow.style.display = isCollapsed ? '' : 'none';
-                    c.summary.style.display = isCollapsed ? 'none' : 'inline';
-                    c.toggle.classList.toggle('open', isCollapsed);
-                });
+            // Recursively expand or collapse this node and all its descendants
+            function setCollapsible(el, expand) {
+                if (!el._jsonCollapsible) return;
+                const c = el._jsonCollapsible;
+                c.childContainer.style.display = expand ? '' : 'none';
+                c.closingRow.style.display = expand ? '' : 'none';
+                c.summary.style.display = expand ? 'none' : 'inline';
+                c.toggle.classList.toggle('open', expand);
+                Array.from(c.childContainer.children)
+                    .filter(child => child.classList.contains('json-collapsible'))
+                    .forEach(child => setCollapsible(child, expand));
+            }
+            setCollapsible(row, isCollapsed);
         } else {
             childContainer.style.display = isCollapsed ? '' : 'none';
             closingRow.style.display = isCollapsed ? '' : 'none';
@@ -366,13 +369,21 @@ function renderJsonBlocks(jsonBlocks) {
         return;
     }
 
+    const multiple = jsonBlocks.length > 1;
+
     jsonBlocks.forEach(({ data, label }, i) => {
         // -- Tab ----------------------------------------------------------
         const tab = document.createElement('li');
-        const tabName = label
-            ? (label.length > 22 ? label.slice(0, 22) + '\u2026' : label)
-            : `JSON ${i + 1}`;
-        tab.appendChild(document.createTextNode(tabName));
+        function getTypeName(d) {
+            if (d === null) return 'Null';
+            if (Array.isArray(d)) return 'Array';
+            const t = typeof d;
+            return t.charAt(0).toUpperCase() + t.slice(1);
+        }
+        const baseName = label || getTypeName(data);
+        const tabName = multiple ? `${baseName} ${i + 1}` : baseName;
+        const display = tabName.length > 22 ? tabName.slice(0, 22) + '\u2026' : tabName;
+        tab.appendChild(document.createTextNode(display));
         tab.appendChild(createSpan('tab-badge', getRootTypeBadge(data)));
         if (i === 0) tab.classList.add('active');
         tabsEl.appendChild(tab);
@@ -405,20 +416,19 @@ function refresh() {
         chrome.scripting.executeScript({
             target: { tabId: tab.id },
             func: () => {
-                const NAME_KEYS = ['name', 'title', 'label', 'id'];
                 const results = [];
                 for (const pre of document.querySelectorAll('pre')) {
                     const text = (pre.textContent || '').trim();
                     if (!text) continue;
                     let parsed;
                     try { parsed = JSON.parse(text); } catch { continue; }
-                    // Derive a label: prefer pre attributes, then top-level JSON keys
-                    let label = (pre.title || pre.id || '').trim();
+                    // Derive a label: pre title attribute, then name/title key in root object
+                    let label = (pre.title || '').trim();
                     if (!label && parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
-                        for (const key of NAME_KEYS) {
+                        for (const key of ['name', 'title']) {
                             const val = parsed[key];
-                            if (val !== undefined && val !== null && typeof val !== 'object') {
-                                label = String(val);
+                            if (typeof val === 'string' && val.trim()) {
+                                label = val.trim();
                                 break;
                             }
                         }

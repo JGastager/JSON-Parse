@@ -192,15 +192,19 @@
             const isCollapsed = childContainer.style.display === 'none';
 
             if (e.shiftKey) {
-                Array.from(container.children)
-                    .filter(el => el.classList.contains('json-collapsible') && el._jsonCollapsible)
-                    .forEach(sibling => {
-                        const c = sibling._jsonCollapsible;
-                        c.childContainer.style.display = isCollapsed ? '' : 'none';
-                        c.closingRow.style.display = isCollapsed ? '' : 'none';
-                        c.summary.style.display = isCollapsed ? 'none' : 'inline';
-                        c.toggle.classList.toggle('open', isCollapsed);
-                    });
+                // Recursively expand or collapse this node and all its descendants
+                function setCollapsible(el, expand) {
+                    if (!el._jsonCollapsible) return;
+                    const c = el._jsonCollapsible;
+                    c.childContainer.style.display = expand ? '' : 'none';
+                    c.closingRow.style.display = expand ? '' : 'none';
+                    c.summary.style.display = expand ? 'none' : 'inline';
+                    c.toggle.classList.toggle('open', expand);
+                    Array.from(c.childContainer.children)
+                        .filter(child => child.classList.contains('json-collapsible'))
+                        .forEach(child => setCollapsible(child, expand));
+                }
+                setCollapsible(row, isCollapsed);
             } else {
                 childContainer.style.display = isCollapsed ? '' : 'none';
                 closingRow.style.display = isCollapsed ? '' : 'none';
@@ -389,8 +393,8 @@
 
         wrap.append(icon, input, countEl, prevBtn, nextBtn, closeBtn);
 
-        // Insert wrap before the settings button (last child of header)
-        header.insertBefore(wrap, header.lastElementChild);
+        // Place wrap inside the same button group as the search button
+        headerBtns.insertBefore(wrap, searchBtn);
 
         const state = { matches: [], current: -1 };
 
@@ -476,13 +480,17 @@
         }
 
         function openSearch() {
+            searchBtn.style.display = 'none';
             wrap.style.display = 'flex';
+            root.classList.add('jp-search-open');
             input.focus();
             input.select();
         }
 
         function closeSearch() {
             wrap.style.display = 'none';
+            searchBtn.style.display = '';
+            root.classList.remove('jp-search-open');
             clearHighlights();
             input.value = '';
             countEl.textContent = '';
@@ -520,9 +528,25 @@
         const header = createEl('div');
         header.id = 'jp-page-header';
 
+        const titleWrap = createEl('div');
+        titleWrap.id = 'jp-page-title-wrap';
+
         const titleEl = createEl('span');
         titleEl.id = 'jp-page-title';
-        titleEl.textContent = location.pathname.split('/').pop() || 'JSON';
+        titleEl.textContent = 'JSON Parse';
+
+        function getRootTypeBadge(value) {
+            if (value === null) return 'null';
+            if (Array.isArray(value)) return '[]';
+            if (typeof value === 'object') return '{}';
+            return typeof value;
+        }
+        const badge = createEl('span', 'tab-badge');
+        badge.id = 'jp-page-badge';
+        badge.textContent = getRootTypeBadge(parsed);
+
+        titleWrap.appendChild(titleEl);
+        titleWrap.appendChild(badge);
 
         const settingsBtn = createEl('div');
         settingsBtn.className = 'btn';
@@ -553,7 +577,7 @@
             }
         });
 
-        header.appendChild(titleEl);
+        header.appendChild(titleWrap);
 
         const headerBtns = createEl('div', 'jp-header-btns');
         headerBtns.appendChild(rawBtn);
@@ -583,7 +607,7 @@
         setupSearch(root, header, headerBtns, body);
 
         // Update page title
-        document.title = location.pathname.split('/').pop() || 'JSON Parse';
+        document.title = 'JSON Parse';
     }
 
     // ── Load settings then render ────────────────────────────────────────────

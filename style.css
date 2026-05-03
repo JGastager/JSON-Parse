@@ -531,15 +531,27 @@ main::-webkit-scrollbar-thumb {
   background: var(--jp-body);
 }
 
+#jp-page-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin: 0 4px 0 8px;
+  overflow: hidden;
+}
+
 #jp-page-title {
   font-size: 13px;
   font-weight: 500;
-  color: var(--jp-muted);
+  color: var(--jp-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   flex-shrink: 0;
-  margin: 0 8px;
+}
+
+#jp-page-badge {
+  flex-shrink: 0;
 }
 
 #jp-page-header #search-input-wrap {
@@ -551,10 +563,20 @@ main::-webkit-scrollbar-thumb {
   border-radius: 6px;
   padding: 4px 6px;
   min-width: 0;
+  max-width: 500px;
 }
 
 #jp-page-header #search-input-wrap:focus-within {
   border-color: var(--jp-hover);
+}
+
+.jp-header-btns {
+  flex-shrink: 0;
+}
+
+#jp-page-root.jp-search-open .jp-header-btns {
+  flex: 1;
+  justify-content: flex-end;
 }
 
 .jp-header-btns {
