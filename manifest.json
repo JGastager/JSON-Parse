@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "JSON Parse",
   "version": "1.0.0",
-  "description": "Instantly explore and visualize JSON found in <pre> tags on any webpage.",
+  "description": "Instantly explore and visualize JSON found on any webpage.",
   "permissions": [
     "activeTab",
     "scripting",

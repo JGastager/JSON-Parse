@@ -375,12 +375,20 @@ function renderJsonBlocks(jsonBlocks) {
     if (!jsonBlocks || jsonBlocks.length === 0) {
         const empty = createEl('div', 'empty-state');
         const msg = createEl('p');
-        msg.appendChild(document.createTextNode('No JSON found in '));
-        const code = document.createElement('code');
-        code.textContent = '<pre>';
-        msg.appendChild(code);
-        msg.appendChild(document.createTextNode(' tags on this page.'));
+        msg.textContent = 'No JSON found on this page.';
+        const hint = createEl('p', 'empty-hint');
+        const tags = ['<pre>', '<code>', '<script>'];
+        hint.appendChild(document.createTextNode('Looks for JSON in '));
+        tags.forEach((tag, i) => {
+            const c = document.createElement('code');
+            c.textContent = tag;
+            hint.appendChild(c);
+            if (i < tags.length - 2) hint.appendChild(document.createTextNode(', '));
+            else if (i === tags.length - 2) hint.appendChild(document.createTextNode(', and '));
+        });
+        hint.appendChild(document.createTextNode(' tags.'));
         empty.appendChild(msg);
+        empty.appendChild(hint);
         panelsEl.appendChild(empty);
         return;
     }
@@ -433,24 +441,55 @@ function refresh() {
             target: { tabId: tab.id },
             func: () => {
                 const results = [];
+
+                function tryParseJson(text) {
+                    try { return JSON.parse(text); } catch { return undefined; }
+                }
+
+                function labelFromObj(parsed, fallback) {
+                    if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                        for (const key of ['name', 'title']) {
+                            const val = parsed[key];
+                            if (typeof val === 'string' && val.trim()) return val.trim();
+                        }
+                    }
+                    return fallback;
+                }
+
+                // 1. <pre> elements
                 for (const pre of document.querySelectorAll('pre')) {
                     const text = (pre.textContent || '').trim();
                     if (!text) continue;
-                    let parsed;
-                    try { parsed = JSON.parse(text); } catch { continue; }
-                    // Derive a label: pre title attribute, then name/title key in root object
-                    let label = (pre.title || '').trim();
-                    if (!label && parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
-                        for (const key of ['name', 'title']) {
-                            const val = parsed[key];
-                            if (typeof val === 'string' && val.trim()) {
-                                label = val.trim();
-                                break;
-                            }
-                        }
-                    }
+                    const parsed = tryParseJson(text);
+                    if (parsed === undefined) continue;
+                    const label = labelFromObj(parsed, (pre.title || '').trim());
                     results.push({ data: parsed, label });
                 }
+
+                // 2. <script type="application/json"> and <script type="application/ld+json">
+                for (const script of document.querySelectorAll('script[type="application/json"], script[type="application/ld+json"]')) {
+                    const text = (script.textContent || '').trim();
+                    if (!text) continue;
+                    const parsed = tryParseJson(text);
+                    if (parsed === undefined) continue;
+                    const isLdJson = script.type === 'application/ld+json';
+                    const idLabel = (script.id || '').trim();
+                    let label = idLabel || (isLdJson ? 'JSON-LD' : '');
+                    label = labelFromObj(parsed, label);
+                    results.push({ data: parsed, label });
+                }
+
+                // 3. <code> elements not inside a <pre> (standalone code blocks)
+                for (const code of document.querySelectorAll('code')) {
+                    if (code.closest('pre')) continue;
+                    const text = (code.textContent || '').trim();
+                    if (!text) continue;
+                    const parsed = tryParseJson(text);
+                    if (parsed === undefined) continue;
+                    const label = labelFromObj(parsed, '');
+                    results.push({ data: parsed, label });
+                }
+
                 return results;
             }
         }).then(([result]) => {

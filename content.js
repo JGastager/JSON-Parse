@@ -9,19 +9,29 @@ function notifyRefresh() {
   }, 400);
 }
 
-// 1. Watch for <pre> elements being added/removed or their text content changing
+// 1. Watch for <pre>, <script[type*=json]>, or <code> elements being added/removed or their text content changing
 const observer = new MutationObserver((mutations) => {
   for (const m of mutations) {
     if (m.type === 'childList') {
       for (const node of [...m.addedNodes, ...m.removedNodes]) {
         if (node.nodeType !== 1) continue;
-        if (node.tagName === 'PRE' || node.querySelector('pre')) {
+        const tag = node.tagName;
+        if (
+          tag === 'PRE' || tag === 'CODE' ||
+          (tag === 'SCRIPT' && /json/i.test(node.type || '')) ||
+          node.querySelector('pre, code, script[type*="json"]')
+        ) {
           notifyRefresh();
           return;
         }
       }
     } else if (m.type === 'characterData') {
-      if (m.target.parentElement?.closest('pre')) {
+      const parent = m.target.parentElement;
+      if (
+        parent?.closest('pre') ||
+        parent?.closest('code') ||
+        parent?.closest('script[type*="json"]')
+      ) {
         notifyRefresh();
         return;
       }

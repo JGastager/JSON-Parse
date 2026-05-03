@@ -46,6 +46,17 @@ async function updateIcon(tabId) {
           const text = (pre.textContent || '').trim();
           if (text) try { JSON.parse(text); return { hasJson: true, isDark: dark }; } catch { }
         }
+        // JSON in <script type="application/json"> or <script type="application/ld+json">
+        for (const script of document.querySelectorAll('script[type="application/json"], script[type="application/ld+json"]')) {
+          const text = (script.textContent || '').trim();
+          if (text) try { JSON.parse(text); return { hasJson: true, isDark: dark }; } catch { }
+        }
+        // JSON in standalone <code> elements (not inside <pre>)
+        for (const code of document.querySelectorAll('code')) {
+          if (code.closest('pre')) continue;
+          const text = (code.textContent || '').trim();
+          if (text) try { JSON.parse(text); return { hasJson: true, isDark: dark }; } catch { }
+        }
         return { hasJson: false, isDark: dark };
       }
     });

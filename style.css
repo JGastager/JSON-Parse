@@ -324,7 +324,7 @@ main::-webkit-scrollbar-thumb {
   justify-content: center;
   min-height: 140px;
   height: 100%;
-  color: var(--jp-dimmed);
+  color: var(--jp-muted);
   text-align: center;
   padding: 24px;
   gap: 10px;
@@ -335,11 +335,16 @@ main::-webkit-scrollbar-thumb {
   line-height: 1.7;
 }
 
+.empty-state .empty-hint {
+  font-size: 11.5px;
+  color: var(--jp-dimmed);
+}
+
 .empty-state code {
   font-family: 'Roboto Mono', monospace;
-  font-size: 13px;
+  font-size: 11.5px;
   background: var(--jp-primary-muted);
-  padding: 2px 5px;
+  padding: 2px 3px;
   border-radius: 3px;
   color: var(--jp-primary);
 }
