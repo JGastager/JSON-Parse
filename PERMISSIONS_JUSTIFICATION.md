@@ -14,11 +14,11 @@ This document explains each permission requested by the JSON Parse extension and
 ---
 
 ### `scripting`
-**Why it's needed:** Allows the extension to execute JavaScript code on web pages to extract and parse JSON data.
+**Why it's needed:** Allows the extension to execute JavaScript code on web pages to extract and parse JSON data, and to check whether a page contains JSON in order to update the toolbar icon.
 
-**What it does:** Runs scripts on the webpage to find JSON contained in `<pre>` tags and other elements, then parses and structures the data for display.
+**What it does:** Runs scripts on the webpage to find JSON contained in `<pre>` tags and to detect raw JSON responses (`application/json` content type), then parses and structures the data for display. Also used to detect JSON on page load so the toolbar icon can reflect whether the current page contains JSON.
 
-**Use case:** This is essential for the core functionality—detecting, extracting, and visualizing JSON found on any webpage.
+**Use case:** This is essential for the core functionality—detecting, extracting, and visualizing JSON found on any webpage, as well as providing accurate icon state feedback.
 
 ---
 
@@ -32,14 +32,14 @@ This document explains each permission requested by the JSON Parse extension and
 ---
 
 ### `tabs`
-**Why it's needed:** Allows the extension to query information about tabs and communicate with content scripts running on them.
+**Why it's needed:** Allows the extension to query information about tabs, communicate with content scripts running on them, and track tab changes to keep the toolbar icon and side panel up to date.
 
 **What it does:** Enables the extension to:
 - Identify the active tab
 - Send messages to tabs to trigger JSON extraction
-- Receive updates when page content changes
+- Listen for tab navigation (`onUpdated`) and tab switches (`onActivated`) to refresh the side panel and update the toolbar icon state
 
-**Use case:** Ensures the side panel always reflects the JSON from the currently active tab and can request fresh data when needed.
+**Use case:** Ensures the side panel always reflects the JSON from the currently active tab, and that the toolbar icon correctly shows whether the current page contains JSON whenever you switch tabs or navigate.
 
 ---
 
@@ -55,9 +55,13 @@ This document explains each permission requested by the JSON Parse extension and
 ### `<all_urls>` (Host Permissions)
 **Why it's needed:** Allows the extension to run on any website to detect and parse JSON on any page you visit.
 
-**What it does:** Grants permission to inject content scripts that scan for JSON on all websites you browse.
+**What it does:** Grants permission for two content scripts to run on all pages:
+1. **`content.js`** – Watches for `<pre>` DOM changes and client-side navigation (SPA support) and notifies the side panel to refresh.
+2. **`json-page.js`** – Detects when the browser loads a raw JSON response (e.g. an API URL returning `application/json`) and replaces the browser’s plain-text view with the full interactive tree UI.
 
-**Use case:** Enables the extension to work on any webpage—API responses, documentation, developer tools, or any site that displays raw JSON.
+Also required for `scripting.executeScript` to extract JSON from `<pre>` tags and detect JSON for toolbar icon updates.
+
+**Use case:** Enables the extension to work on any webpage—API responses, documentation, developer tools, or any site that displays raw JSON—and to transform bare JSON URLs into a rich, explorable view.
 
 ---
 

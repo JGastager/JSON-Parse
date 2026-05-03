@@ -1,7 +1,7 @@
 let THEMES = {};
 
 const DEFAULT_THEME = 'material';
-const DEFAULT_SETTINGS = { quoteKeys: true, countOnly: false, wrapStrings: false, colorBrackets: true, showCommas: true };
+const DEFAULT_SETTINGS = { quoteKeys: true, countOnly: false, wrapStrings: false, colorBrackets: true, showCommas: true, firstLevelOnly: false };
 
 function applyPreview(themeKey, settings) {
     const t = THEMES[themeKey] || THEMES[DEFAULT_THEME];
@@ -38,6 +38,7 @@ function getCurrentSettings() {
         wrapStrings: document.getElementById('wrapStrings').checked,
         colorBrackets: document.getElementById('colorBrackets').checked,
         showCommas: document.getElementById('showCommas').checked,
+        firstLevelOnly: document.getElementById('firstLevelOnly').checked,
     };
 }
 
@@ -51,6 +52,7 @@ function loadSettings() {
         document.getElementById('wrapStrings').checked = settings.wrapStrings;
         document.getElementById('colorBrackets').checked = settings.colorBrackets !== false;
         document.getElementById('showCommas').checked = settings.showCommas !== false;
+        document.getElementById('firstLevelOnly').checked = !!settings.firstLevelOnly;
         applyPreview(theme, settings);
     });
 }

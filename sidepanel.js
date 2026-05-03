@@ -35,7 +35,7 @@ function createSpan(className, text) {
 const AUTO_COLLAPSE_DEPTH = 2;
 
 // Runtime settings (loaded from storage, updated via storage.onChanged)
-let SETTINGS = { quoteKeys: true, countOnly: false, wrapStrings: false, colorBrackets: true, showCommas: true };
+let SETTINGS = { quoteKeys: true, countOnly: false, wrapStrings: false, colorBrackets: true, showCommas: true, firstLevelOnly: false };
 let currentTheme = 'material';
 
 function applySettings() {
@@ -110,7 +110,7 @@ function buildJsonTree(container, value, key, depth, isLast, path = '$', arrayIn
         return;
     }
 
-    const collapsed = depth >= AUTO_COLLAPSE_DEPTH;
+    const collapsed = depth >= (SETTINGS.firstLevelOnly ? 1 : AUTO_COLLAPSE_DEPTH);
 
     // Expand/collapse toggle arrow always first in the row
     const toggle = createSpan('json-toggle', '');
@@ -137,6 +137,7 @@ function buildJsonTree(container, value, key, depth, isLast, path = '$', arrayIn
     // Children container
     const childContainer = createEl('div', 'json-children');
     // Position the indent guide line at the toggle's horizontal centre
+    childContainer._parentRow = row;
     childContainer.style.setProperty('--indent-x', `${depth * 20 + 7}px`);
     childContainer.style.display = collapsed ? 'none' : '';
 
@@ -292,10 +293,21 @@ function setupPathTooltip(root) {
     }
 
     let hoverTimer = null;
-    let currentRow = null;
+    let currentAnchor = null;
 
-    function show(path, x, y) {
-        tooltip.textContent = path;
+    function show(text, x, y, isPath = false) {
+        tooltip.classList.toggle('jp-tooltip-path', isPath);
+        const parts = text.split('  ');
+        tooltip.innerHTML = '';
+        const label = document.createElement('span');
+        label.textContent = parts[0];
+        tooltip.appendChild(label);
+        if (parts[1]) {
+            const kbd = document.createElement('span');
+            kbd.className = 'jp-tooltip-shortcut';
+            kbd.textContent = parts[1];
+            tooltip.appendChild(kbd);
+        }
         tooltip.classList.add('visible');
         position(x, y);
     }
@@ -303,7 +315,7 @@ function setupPathTooltip(root) {
     function hide() {
         clearTimeout(hoverTimer);
         hoverTimer = null;
-        currentRow = null;
+        currentAnchor = null;
         tooltip.classList.remove('visible');
     }
 
@@ -319,21 +331,25 @@ function setupPathTooltip(root) {
     }
 
     root.addEventListener('mouseover', (e) => {
+        const btn = e.target.closest('[data-tooltip]');
+        if (btn) {
+            if (btn === currentAnchor) return;
+            clearTimeout(hoverTimer);
+            currentAnchor = btn;
+            hoverTimer = setTimeout(() => show(btn.dataset.tooltip, e.clientX, e.clientY), 500);
+            return;
+        }
         if (!e.target.classList.contains('json-key')) { hide(); return; }
         const row = e.target.closest('.json-row');
         if (!row || !row._jpData || !row._jpData.path) { hide(); return; }
-        if (row === currentRow) return;
+        if (row === currentAnchor) return;
         clearTimeout(hoverTimer);
-        currentRow = row;
-        hoverTimer = setTimeout(() => show(row._jpData.path, e.clientX, e.clientY), 500);
-    });
-
-    root.addEventListener('mouseout', (e) => {
-        const row = e.target.closest('.json-row');
-        if (row && row === currentRow && !row.contains(e.relatedTarget)) {
+        currentAnchor = row;
+        hoverTimer = setTimeout(() => show(row._jpData.path, e.clientX, e.clientY, true), 500);
+        if (anchor && anchor === currentAnchor && !anchor.contains(e.relatedTarget)) {
             clearTimeout(hoverTimer);
             hoverTimer = null;
-            currentRow = null;
+            currentAnchor = null;
             tooltip.classList.remove('visible');
         }
     });
@@ -502,8 +518,8 @@ function runSearch(query) {
     searchState.matches.forEach(mark => {
         let el = mark.parentElement;
         while (el) {
-            if (el.classList.contains('json-collapsible') && el._jsonCollapsible) {
-                const c = el._jsonCollapsible;
+            if (el._parentRow && el._parentRow._jsonCollapsible) {
+                const c = el._parentRow._jsonCollapsible;
                 if (c.childContainer.style.display === 'none') {
                     c.childContainer.style.display = '';
                     c.closingRow.style.display = '';
@@ -526,6 +542,21 @@ function navigateMatch(index) {
     searchState.current = (index + searchState.matches.length) % searchState.matches.length;
     const active = searchState.matches[searchState.current];
     active.classList.add('active');
+
+    // Expand any collapsed ancestor containing this match
+    let node = active.parentElement;
+    while (node) {
+        if (node._parentRow && node._parentRow._jsonCollapsible) {
+            const c = node._parentRow._jsonCollapsible;
+            if (c.childContainer.style.display === 'none') {
+                c.childContainer.style.display = '';
+                c.closingRow.style.display = '';
+                c.summary.style.display = 'none';
+                c.toggle.classList.add('open');
+            }
+        }
+        node = node.parentElement;
+    }
 
     // Switch to the panel containing this match
     const panel = active.closest('.json-panel');
@@ -588,6 +619,10 @@ function setupSearch() {
         if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
             e.preventDefault();
             openSearch();
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+            e.preventDefault();
+            window.open(chrome.runtime.getURL('options.html'), '_blank');
         }
         if (e.key === 'Escape' && bar.classList.contains('open')) {
             closeSearch();

@@ -20,11 +20,49 @@
     let parsed;
     try { parsed = JSON.parse(raw); } catch { return; }
 
+    // ── Derive a label (mirrors sidepanel.js tab-naming logic) ───────────────
+    function getTypeName(val) {
+        if (val === null) return 'Null';
+        if (Array.isArray(val)) return 'Array';
+        const t = typeof val;
+        return t.charAt(0).toUpperCase() + t.slice(1);
+    }
+    let pageLabel = (document.title || '').trim();
+    if (!pageLabel) pageLabel = (pre.title || '').trim();
+    if (!pageLabel && parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        for (const key of ['name', 'title']) {
+            const val = parsed[key];
+            if (typeof val === 'string' && val.trim()) { pageLabel = val.trim(); break; }
+        }
+    }
+    if (!pageLabel) pageLabel = getTypeName(parsed);
+
+    // ── Build document title with first-level keys/values appended by |
+    function buildDocTitle(data) {
+        const typeName = getTypeName(data);
+        if (data === null || typeof data !== 'object') return typeName;
+        if (Array.isArray(data)) {
+            const parts = data.slice(0, 5).map(v =>
+                v === null ? 'null'
+                    : typeof v === 'object' ? getTypeName(v)
+                        : String(v));
+            return parts.length ? typeName + ' [ ' + parts.join(', ') + ' ]' : typeName;
+        } else {
+            const entries = Object.entries(data).slice(0, 10).map(([k, v]) => {
+                const val = v === null ? 'null'
+                    : typeof v === 'object' ? getTypeName(v)
+                        : String(v);
+                return k + ': ' + val;
+            });
+            return entries.length ? typeName + ' { ' + entries.join(', ') + ' }' : typeName;
+        }
+    }
+
     // ── Themes (loaded from themes.json) ────────────────────────────────────
     let THEMES = {};
 
     // ── Settings defaults ────────────────────────────────────────────────────
-    let SETTINGS = { quoteKeys: true, countOnly: false, wrapStrings: false, colorBrackets: true, showCommas: true };
+    let SETTINGS = { quoteKeys: true, countOnly: false, wrapStrings: false, colorBrackets: true, showCommas: true, firstLevelOnly: false };
     const AUTO_COLLAPSE_DEPTH = 2;
 
     // ── Inject CSS ───────────────────────────────────────────────────────────
@@ -137,7 +175,7 @@
             return;
         }
 
-        const collapsed = depth >= AUTO_COLLAPSE_DEPTH;
+        const collapsed = depth >= (SETTINGS.firstLevelOnly ? 1 : AUTO_COLLAPSE_DEPTH);
 
         const toggle = createSpan('json-toggle', '');
         if (!collapsed) toggle.classList.add('open');
@@ -160,6 +198,7 @@
         container.appendChild(row);
 
         const childContainer = createEl('div', 'json-children');
+        childContainer._parentRow = row;
         childContainer.style.setProperty('--indent-x', `${depth * 20 + 7}px`);
         childContainer.style.display = collapsed ? 'none' : '';
 
@@ -310,10 +349,21 @@
         }
 
         let hoverTimer = null;
-        let currentRow = null;
+        let currentAnchor = null;
 
-        function show(path, x, y) {
-            tooltip.textContent = path;
+        function show(text, x, y, isPath = false) {
+            tooltip.classList.toggle('jp-tooltip-path', isPath);
+            const parts = text.split('  ');
+            tooltip.innerHTML = '';
+            const label = document.createElement('span');
+            label.textContent = parts[0];
+            tooltip.appendChild(label);
+            if (parts[1]) {
+                const kbd = document.createElement('span');
+                kbd.className = 'jp-tooltip-shortcut';
+                kbd.textContent = parts[1];
+                tooltip.appendChild(kbd);
+            }
             tooltip.classList.add('visible');
             position(x, y);
         }
@@ -321,7 +371,7 @@
         function hide() {
             clearTimeout(hoverTimer);
             hoverTimer = null;
-            currentRow = null;
+            currentAnchor = null;
             tooltip.classList.remove('visible');
         }
 
@@ -337,21 +387,25 @@
         }
 
         root.addEventListener('mouseover', (e) => {
+            const btn = e.target.closest('[data-tooltip]');
+            if (btn) {
+                if (btn === currentAnchor) return;
+                clearTimeout(hoverTimer);
+                currentAnchor = btn;
+                hoverTimer = setTimeout(() => show(btn.dataset.tooltip, e.clientX, e.clientY), 500);
+                return;
+            }
             if (!e.target.classList.contains('json-key')) { hide(); return; }
             const row = e.target.closest('.json-row');
             if (!row || !row._jpData || !row._jpData.path) { hide(); return; }
-            if (row === currentRow) return;
+            if (row === currentAnchor) return;
             clearTimeout(hoverTimer);
-            currentRow = row;
-            hoverTimer = setTimeout(() => show(row._jpData.path, e.clientX, e.clientY), 500);
-        });
-
-        root.addEventListener('mouseout', (e) => {
-            const row = e.target.closest('.json-row');
-            if (row && row === currentRow && !row.contains(e.relatedTarget)) {
+            currentAnchor = row;
+            hoverTimer = setTimeout(() => show(row._jpData.path, e.clientX, e.clientY, true), 500);
+            if (anchor && anchor === currentAnchor && !anchor.contains(e.relatedTarget)) {
                 clearTimeout(hoverTimer);
                 hoverTimer = null;
-                currentRow = null;
+                currentAnchor = null;
                 tooltip.classList.remove('visible');
             }
         });
@@ -363,7 +417,7 @@
     function setupSearch(root, header, headerBtns, body) {
         // Search toggle button in header
         const searchBtn = createEl('div', 'btn');
-        searchBtn.title = 'Search (Ctrl+F)';
+        searchBtn.dataset.tooltip = 'Search  Ctrl+F';
         searchBtn.appendChild(createEl('span', 'i-search-btn'));
         headerBtns.prepend(searchBtn);
 
@@ -381,14 +435,14 @@
         const countEl = createEl('span');
         countEl.id = 'search-count';
         const prevBtn = createEl('button', 'search-nav-btn');
-        prevBtn.title = 'Previous match';
+        prevBtn.dataset.tooltip = 'Previous match  Shift+Enter';
         prevBtn.appendChild(createEl('span', 'i-search-prev'));
         const nextBtn = createEl('button', 'search-nav-btn');
-        nextBtn.title = 'Next match';
+        nextBtn.dataset.tooltip = 'Next match  Enter';
         nextBtn.appendChild(createEl('span', 'i-search-next'));
         const closeBtn = document.createElement('button');
         closeBtn.id = 'search-close';
-        closeBtn.title = 'Close search';
+        closeBtn.dataset.tooltip = 'Close search  Esc';
         closeBtn.appendChild(createEl('span', 'i-search-close'));
 
         wrap.append(icon, input, countEl, prevBtn, nextBtn, closeBtn);
@@ -440,8 +494,8 @@
             state.matches.forEach(mark => {
                 let el = mark.parentElement;
                 while (el && el !== root) {
-                    if (el.classList.contains('json-collapsible') && el._jsonCollapsible) {
-                        const c = el._jsonCollapsible;
+                    if (el._parentRow && el._parentRow._jsonCollapsible) {
+                        const c = el._parentRow._jsonCollapsible;
                         if (c.childContainer.style.display === 'none') {
                             c.childContainer.style.display = '';
                             c.closingRow.style.display = '';
@@ -456,12 +510,29 @@
             if (state.matches.length) navigateTo(0);
         }
 
+        function expandAncestors(el) {
+            let node = el.parentElement;
+            while (node && node !== root) {
+                if (node._parentRow && node._parentRow._jsonCollapsible) {
+                    const c = node._parentRow._jsonCollapsible;
+                    if (c.childContainer.style.display === 'none') {
+                        c.childContainer.style.display = '';
+                        c.closingRow.style.display = '';
+                        c.summary.style.display = 'none';
+                        c.toggle.classList.add('open');
+                    }
+                }
+                node = node.parentElement;
+            }
+        }
+
         function navigateTo(index) {
             state.matches.forEach(m => m.classList.remove('active'));
             if (!state.matches.length) return;
             state.current = (index + state.matches.length) % state.matches.length;
             const active = state.matches[state.current];
             active.classList.add('active');
+            expandAncestors(active);
             active.scrollIntoView({ block: 'center', behavior: 'smooth' });
             updateCount();
         }
@@ -500,6 +571,8 @@
 
         document.addEventListener('keydown', (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'f') { e.preventDefault(); openSearch(); }
+            if ((e.ctrlKey || e.metaKey) && e.key === '\\') { e.preventDefault(); rawBtn.click(); }
+            if ((e.ctrlKey || e.metaKey) && e.key === ',') { e.preventDefault(); settingsBtn.click(); }
             if (e.key === 'Escape' && wrap.style.display !== 'none') closeSearch();
         }, true);
 
@@ -516,9 +589,20 @@
     }
 
     // ── Page takeover ────────────────────────────────────────────────────────
+    function setFavicon() {
+        const existing = document.querySelector('link[rel~="icon"]');
+        if (existing) existing.remove();
+        const link = document.createElement('link');
+        link.rel = 'icon';
+        link.type = 'image/png';
+        link.href = chrome.runtime.getURL(Array.isArray(parsed) ? 'icon-array.png' : 'icon.png');
+        document.head.appendChild(link);
+    }
+
     function renderPage(themeKey, settings) {
         Object.assign(SETTINGS, settings);
         injectStyles(themeKey, settings);
+        setFavicon();
 
         // Build root container
         const root = createEl('div');
@@ -533,7 +617,7 @@
 
         const titleEl = createEl('span');
         titleEl.id = 'jp-page-title';
-        titleEl.textContent = 'JSON Parse';
+        titleEl.textContent = pageLabel;
 
         function getRootTypeBadge(value) {
             if (value === null) return 'null';
@@ -550,18 +634,18 @@
 
         const settingsBtn = createEl('div');
         settingsBtn.className = 'btn';
-        settingsBtn.title = 'Open settings';
+        settingsBtn.dataset.tooltip = 'Open settings  Ctrl+,';
         settingsBtn.appendChild(createEl('span', 'i-gear'));
         settingsBtn.addEventListener('click', () => chrome.runtime.sendMessage({ action: 'openOptions' }));
 
         const rawBtn = createEl('div');
         rawBtn.className = 'btn';
-        rawBtn.title = 'View raw JSON';
+        rawBtn.dataset.tooltip = 'View raw JSON  Ctrl+\\';
         rawBtn.appendChild(createEl('span', 'i-raw'));
         rawBtn.addEventListener('click', () => {
             if (rawBtn.classList.contains('active')) {
                 rawBtn.classList.remove('active');
-                rawBtn.title = 'View raw JSON';
+                rawBtn.dataset.tooltip = 'View raw JSON  Ctrl+\\';
                 body.innerHTML = '';
                 const newTree = createEl('div', 'json-tree');
                 if (SETTINGS.wrapStrings) newTree.classList.add('wrap-strings');
@@ -569,7 +653,7 @@
                 body.appendChild(newTree);
             } else {
                 rawBtn.classList.add('active');
-                rawBtn.title = 'View tree';
+                rawBtn.dataset.tooltip = 'View tree  Ctrl+\\';
                 body.innerHTML = '';
                 const pre = createEl('pre', 'jp-raw-json');
                 pre.textContent = JSON.stringify(parsed, null, 2);
@@ -607,7 +691,7 @@
         setupSearch(root, header, headerBtns, body);
 
         // Update page title
-        document.title = 'JSON Parse';
+        document.title = buildDocTitle(parsed);
     }
 
     // ── Load settings then render ────────────────────────────────────────────
