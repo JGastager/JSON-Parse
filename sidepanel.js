@@ -37,6 +37,11 @@ const AUTO_COLLAPSE_DEPTH = 2;
 // Runtime settings (loaded from storage, updated via storage.onChanged)
 let SETTINGS = { quoteKeys: true, countOnly: false, wrapStrings: false, colorBrackets: true, showCommas: true, firstLevelOnly: false };
 let currentTheme = 'material';
+let pasteReady = false;
+
+function setPasteReady(val) {
+    pasteReady = val;
+}
 
 function applySettings() {
     document.querySelectorAll('.json-tree').forEach(tree => {
@@ -86,7 +91,23 @@ function buildJsonTree(container, value, key, depth, isLast, path = '$', arrayIn
         // Truncate very long strings to keep the tree readable
         const display = value.length > 300 ? value.slice(0, 300) + '\u2026' : value;
         row.insertBefore(createSpan('json-toggle-spacer', ''), row.firstChild);
-        row.appendChild(createSpan('json-string', `"${display}"`));
+        let isUrl = false;
+        try { const u = new URL(value); isUrl = u.protocol === 'https:' || u.protocol === 'http:'; } catch { }
+        if (isUrl) {
+            const wrapper = createEl('span', 'json-string');
+            wrapper.appendChild(document.createTextNode('"'));
+            const a = document.createElement('a');
+            a.className = 'json-link';
+            a.href = value;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            a.textContent = display;
+            wrapper.appendChild(a);
+            wrapper.appendChild(document.createTextNode('"'));
+            row.appendChild(wrapper);
+        } else {
+            row.appendChild(createSpan('json-string', `"${display}"`));
+        }
         if (!isLast && SETTINGS.showCommas !== false) row.appendChild(createSpan('json-punct', ','));
         container.appendChild(row);
         return;
@@ -371,6 +392,7 @@ function renderJsonBlocks(jsonBlocks) {
 
     tabsEl.innerHTML = '';
     panelsEl.innerHTML = '';
+    pendingTab = null;
 
     if (!jsonBlocks || jsonBlocks.length === 0) {
         const empty = createEl('div', 'empty-state');
@@ -392,6 +414,7 @@ function renderJsonBlocks(jsonBlocks) {
         panelsEl.appendChild(empty);
         return;
     }
+    setPasteReady(false);
 
     const multiple = jsonBlocks.length > 1;
 
@@ -680,12 +703,135 @@ function setupSearch() {
     closeBtn.addEventListener('click', closeSearch);
 }
 
+// -- Add-JSON via paste -----------------------------------------------------
+
+let pendingTab = null;   // { tab, panel } awaiting a paste
+
+function createPendingTab() {
+    const tabsEl = document.getElementById('json-tabs');
+    const panelsEl = document.getElementById('json-panels');
+
+    const emptyState = panelsEl.querySelector('.empty-state');
+    if (emptyState) emptyState.remove();
+
+    const existingLabels = Array.from(tabsEl.querySelectorAll('li')).map(t => t.firstChild.textContent);
+    let label = 'Custom';
+    if (existingLabels.includes('Custom')) {
+        let n = 2;
+        while (existingLabels.includes('Custom ' + n)) n++;
+        label = 'Custom ' + n;
+    }
+
+    const tab = document.createElement('li');
+    tab.appendChild(document.createTextNode(label));
+    tabsEl.appendChild(tab);
+
+    const panel = createEl('section', 'json-panel');
+    const inputWrap = createEl('div', 'custom-json-wrap');
+    const textarea = document.createElement('textarea');
+    textarea.className = 'custom-json-input';
+    textarea.spellcheck = false;
+    textarea.placeholder = 'Paste or type JSON here…';
+    const errorMsg = createEl('div', 'custom-json-error');
+    inputWrap.appendChild(textarea);
+    inputWrap.appendChild(errorMsg);
+    panel.appendChild(inputWrap);
+    panelsEl.appendChild(panel);
+
+    tab.addEventListener('click', () => {
+        tabsEl.querySelectorAll('li').forEach(t => t.classList.remove('active'));
+        panelsEl.querySelectorAll('.json-panel').forEach(p => { p.style.display = 'none'; });
+        tab.classList.add('active');
+        panel.style.display = '';
+    });
+
+    // Switch to the new pending tab
+    tabsEl.querySelectorAll('li').forEach(t => t.classList.remove('active'));
+    panelsEl.querySelectorAll('.json-panel').forEach(p => { p.style.display = 'none'; });
+    tab.classList.add('active');
+    panel.style.display = '';
+    textarea.focus();
+
+    function setBadge(text, error = false) {
+        let badge = tab.querySelector('.tab-badge');
+        if (!badge) {
+            badge = createSpan('tab-badge', '');
+            tab.appendChild(badge);
+        }
+        badge.textContent = text;
+        badge.classList.toggle('tab-badge-error', error);
+    }
+
+    function removeBadge() {
+        const badge = tab.querySelector('.tab-badge');
+        if (badge) badge.remove();
+    }
+
+    function setError(msg) {
+        errorMsg.textContent = msg;
+    }
+
+    function clearError() {
+        errorMsg.textContent = '';
+    }
+
+    function tryRender() {
+        const raw = textarea.value.trim();
+        if (!raw) return;
+        let parsed;
+        try { parsed = JSON.parse(raw); } catch { return; }
+
+        panel.innerHTML = '';
+        const tree = createEl('div', 'json-tree');
+        if (SETTINGS.wrapStrings) tree.classList.add('wrap-strings');
+        buildJsonTree(tree, parsed, null, 0, true);
+        panel.appendChild(tree);
+
+        setBadge(getRootTypeBadge(parsed), false);
+        clearError();
+
+        pendingTab = null;
+        setPasteReady(false);
+    }
+
+    textarea.addEventListener('paste', () => setTimeout(tryRender, 0));
+    textarea.addEventListener('blur', () => {
+        const raw = textarea.value.trim();
+        if (!raw) { removeBadge(); clearError(); return; }
+        try { JSON.parse(raw); removeBadge(); clearError(); } catch (err) { setBadge('!', true); setError(err.message); }
+    });
+    textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            const raw = textarea.value.trim();
+            if (!raw) return;
+            let parsed;
+            try { parsed = JSON.parse(raw); } catch (err) {
+                setBadge('!', true);
+                setError(err.message);
+                return;
+            }
+            tryRender();
+        }
+    });
+
+    pendingTab = { tab, panel };
+    setPasteReady(true);
+}
+
+function setupPasteJson() {
+    document.getElementById('add-json-btn').addEventListener('click', () => {
+        createPendingTab();
+    });
+}
+
 // -- Boot -------------------------------------------------------------------
 
 document.addEventListener('DOMContentLoaded', () => {
     setupContextMenu(document.body);
     setupPathTooltip(document.body);
     setupSearch();
+    setupPasteJson();
 
     fetch(chrome.runtime.getURL('themes.json'))
         .then(r => r.json())

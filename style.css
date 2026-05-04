@@ -85,6 +85,13 @@ nav {
   padding-right: 8px;
 }
 
+.nav-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 2px;
+}
+
 nav ul {
   display: flex;
   padding: 8px;
@@ -139,7 +146,50 @@ nav ul li.active {
   border-radius: 3px;
 }
 
+.tab-badge.tab-badge-error {
+  background: rgba(255, 83, 112, 0.2);
+  color: #FF5370;
+}
+
 /* ── Sidepanel — Main ──────────────────────────────────────────────────── */
+
+.custom-json-wrap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.custom-json-input {
+  display: block;
+  width: 100%;
+  flex: 1;
+  min-height: 200px;
+  background: transparent;
+  color: var(--jp-text);
+  border: none;
+  outline: none;
+  resize: none;
+  padding: 12px 10px 8px;
+  font-family: 'Roboto Mono', 'Consolas', monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  caret-color: var(--jp-primary);
+}
+
+.custom-json-error {
+  display: none;
+  font-size: 11.5px;
+  padding: 6px 10px;
+  background: rgba(255, 83, 112, 0.2);
+  color: #FF5370;
+  min-height: 0;
+  font-family: 'Roboto Mono', 'Consolas', monospace;
+  border-radius: 4px;
+}
+
+.custom-json-error:not(:empty) {
+  display: block;
+}
 
 main {
   background: var(--jp-bg);
@@ -340,6 +390,12 @@ main::-webkit-scrollbar-thumb {
   color: var(--jp-dimmed);
 }
 
+.empty-state .empty-paste-hint {
+  font-size: 12px;
+  color: var(--jp-primary);
+  margin-top: 4px;
+}
+
 .empty-state code {
   font-family: 'Roboto Mono', monospace;
   font-size: 11.5px;
@@ -388,6 +444,8 @@ main::-webkit-scrollbar-thumb {
 /* Token colors */
 .json-key     { color: var(--json-key); }
 .json-string  { color: var(--json-string); }
+.json-link    { color: inherit; text-decoration: none; }
+.json-link:hover { text-decoration: underline; }
 .json-number  { color: var(--json-number); }
 .json-boolean { color: var(--json-boolean); }
 .json-null    { color: var(--json-null); }
@@ -503,6 +561,18 @@ main::-webkit-scrollbar-thumb {
   font-size: 13px;
 }
 
+/* ── Shared — Plus icon ────────────────────────────────────────────────── */
+
+.i-plus {
+  background-color: var(--jp-text);
+  height: 18px;
+  width: 18px;
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath fill='%23000' d='M10 3a.75.75 0 0 1 .75.75v5.5h5.5a.75.75 0 0 1 0 1.5h-5.5v5.5a.75.75 0 0 1-1.5 0v-5.5H3.75a.75.75 0 0 1 0-1.5h5.5v-5.5A.75.75 0 0 1 10 3'/%3E%3C/svg%3E");
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+}
+
 /* ── Shared — Settings button ──────────────────────────────────────────── */
 
 .btn {
@@ -512,15 +582,27 @@ main::-webkit-scrollbar-thumb {
   padding: 6px;
   background: transparent;
   color: var(--jp-text);
+  border: none;
   border-radius: 4px;
+  appearance: none;
+  -webkit-appearance: none;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
+  text-decoration: none;
   transition: background-color 0.2s ease;
 }
 
 .btn:hover {
   background-color: var(--jp-soft);
+}
+
+#add-json-btn.active {
+  background-color: var(--jp-primary-muted);
+}
+
+#add-json-btn.active .i-plus {
+  background-color: var(--jp-primary);
 }
 
 /* ── json-page — Header ─────────────────────────────────────────────────── */

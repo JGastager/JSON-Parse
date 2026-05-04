@@ -152,7 +152,23 @@
         if (typeof value === 'string') {
             const display = value.length > 300 ? value.slice(0, 300) + '\u2026' : value;
             row.insertBefore(createSpan('json-toggle-spacer', ''), row.firstChild);
-            row.appendChild(createSpan('json-string', `"${display}"`));
+            let isUrl = false;
+            try { const u = new URL(value); isUrl = u.protocol === 'https:' || u.protocol === 'http:'; } catch { }
+            if (isUrl) {
+                const wrapper = createEl('span', 'json-string');
+                wrapper.appendChild(document.createTextNode('"'));
+                const a = document.createElement('a');
+                a.className = 'json-link';
+                a.href = value;
+                a.target = '_blank';
+                a.rel = 'noopener noreferrer';
+                a.textContent = display;
+                wrapper.appendChild(a);
+                wrapper.appendChild(document.createTextNode('"'));
+                row.appendChild(wrapper);
+            } else {
+                row.appendChild(createSpan('json-string', `"${display}"`));
+            }
             if (!isLast && SETTINGS.showCommas !== false) row.appendChild(createSpan('json-punct', ','));
             container.appendChild(row);
             return;
