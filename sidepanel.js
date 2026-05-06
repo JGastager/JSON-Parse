@@ -736,15 +736,18 @@ function createPendingTab() {
     tabsEl.appendChild(tab);
 
     const panel = createEl('section', 'json-panel');
-    const inputWrap = createEl('div', 'custom-json-wrap');
     const textarea = document.createElement('textarea');
     textarea.className = 'custom-json-input';
     textarea.spellcheck = false;
     textarea.placeholder = 'Paste or type JSON here…';
     const errorMsg = createEl('div', 'custom-json-error');
-    inputWrap.appendChild(textarea);
-    inputWrap.appendChild(errorMsg);
-    panel.appendChild(inputWrap);
+    const footer = createEl('div', 'custom-json-footer');
+    const parseBtn = createEl('button', 'custom-json-parse-btn');
+    parseBtn.textContent = 'Parse';
+    footer.appendChild(parseBtn);
+    panel.appendChild(errorMsg);
+    panel.appendChild(textarea);
+    panel.appendChild(footer);
     panelsEl.appendChild(panel);
 
     tab.addEventListener('click', () => {
@@ -802,6 +805,18 @@ function createPendingTab() {
         pendingTab = null;
         setPasteReady(false);
     }
+
+    parseBtn.addEventListener('click', () => {
+        const raw = textarea.value.trim();
+        if (!raw) return;
+        let parsed;
+        try { parsed = JSON.parse(raw); } catch (err) {
+            setBadge('!', true);
+            setError(err.message);
+            return;
+        }
+        tryRender();
+    });
 
     textarea.addEventListener('paste', () => setTimeout(tryRender, 0));
     textarea.addEventListener('blur', () => {
