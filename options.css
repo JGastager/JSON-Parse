@@ -267,3 +267,72 @@ button {
     transform: translateX(18px);
     background-color: var(--jp-primary);
 }
+
+/* ── Custom theme color pickers ─────────────────── */
+
+#custom-theme-pickers {
+    padding: 14px 0 6px;
+    border-bottom: 1px solid var(--jp-soft);
+}
+
+.cp-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 12px;
+}
+
+.cp-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: var(--jp-bg);
+    gap: 8px;
+}
+
+.cp-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--jp-muted);
+    flex: 1;
+}
+
+.cp-swatch-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.cp-swatch-wrap input[type="color"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 4px;
+    padding: 0;
+    background: transparent;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.cp-swatch-wrap input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 0;
+    border-radius: 4px;
+}
+
+.cp-swatch-wrap input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: 4px;
+}
+
+.cp-hex {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 11px;
+    color: var(--jp-dimmed);
+    min-width: 52px;
+    text-align: right;
+    user-select: none;
+}

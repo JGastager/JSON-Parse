@@ -66,8 +66,8 @@
     const AUTO_COLLAPSE_DEPTH = 2;
 
     // ── Inject CSS ───────────────────────────────────────────────────────────
-    function injectStyles(themeKey, settings) {
-        const t = THEMES[themeKey] || THEMES.material;
+    function injectStyles(themeColors, settings) {
+        const t = themeColors;
         const bracketColor = settings.colorBrackets !== false ? t.bracket : t.punct;
         const braceColor = settings.colorBrackets !== false ? t.brace : t.punct;
 
@@ -615,9 +615,12 @@
         document.head.appendChild(link);
     }
 
-    function renderPage(themeKey, settings) {
+    function renderPage(themeKey, settings, customColors) {
+        const t = themeKey === 'custom'
+            ? (customColors || THEMES.material)
+            : (THEMES[themeKey] || THEMES.material);
         Object.assign(SETTINGS, settings);
-        injectStyles(themeKey, settings);
+        injectStyles(t, settings);
         setFavicon();
 
         // Build root container
@@ -715,20 +718,20 @@
         .then(r => r.json())
         .then(themes => {
             THEMES = themes;
-            chrome.storage.sync.get(['jsonParseTheme', 'jsonParseSettings'], (data) => {
+            chrome.storage.sync.get(['jsonParseTheme', 'jsonParseSettings', 'jsonParseCustomTheme'], (data) => {
                 const theme = data.jsonParseTheme || 'material';
                 const settings = data.jsonParseSettings || {};
-                renderPage(theme, settings);
+                renderPage(theme, settings, data.jsonParseCustomTheme);
             });
         });
 
     // Re-render if settings change while the tab is open
     chrome.storage.onChanged.addListener((changes) => {
-        if (changes.jsonParseTheme || changes.jsonParseSettings) {
-            chrome.storage.sync.get(['jsonParseTheme', 'jsonParseSettings'], (data) => {
+        if (changes.jsonParseTheme || changes.jsonParseSettings || changes.jsonParseCustomTheme) {
+            chrome.storage.sync.get(['jsonParseTheme', 'jsonParseSettings', 'jsonParseCustomTheme'], (data) => {
                 const theme = data.jsonParseTheme || 'material';
                 const settings = data.jsonParseSettings || {};
-                renderPage(theme, settings);
+                renderPage(theme, settings, data.jsonParseCustomTheme);
             });
         }
     });

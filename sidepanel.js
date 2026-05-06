@@ -4,9 +4,7 @@
 
 let THEMES = {};
 
-function applyTheme(themeKey) {
-    currentTheme = themeKey;
-    const t = THEMES[themeKey] || THEMES.material;
+function applyThemeColors(t) {
     const root = document.documentElement.style;
     root.setProperty('--json-key', t.key);
     root.setProperty('--json-string', t.string);
@@ -16,6 +14,17 @@ function applyTheme(themeKey) {
     root.setProperty('--json-bracket', SETTINGS.colorBrackets !== false ? t.bracket : t.punct);
     root.setProperty('--json-brace', SETTINGS.colorBrackets !== false ? t.brace : t.punct);
     root.setProperty('--json-punct', t.punct);
+}
+
+function applyTheme(themeKey) {
+    currentTheme = themeKey;
+    if (themeKey === 'custom') {
+        chrome.storage.sync.get('jsonParseCustomTheme', (data) => {
+            applyThemeColors(data.jsonParseCustomTheme || THEMES.material);
+        });
+        return;
+    }
+    applyThemeColors(THEMES[themeKey] || THEMES.material);
 }
 
 function createEl(tag, className) {
@@ -849,6 +858,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Re-apply theme/settings if changed in options while panel is open
 chrome.storage.onChanged.addListener((changes) => {
     if (changes.jsonParseTheme) applyTheme(changes.jsonParseTheme.newValue);
+    if (changes.jsonParseCustomTheme && currentTheme === 'custom') applyTheme('custom');
     if (changes.jsonParseSettings) {
         Object.assign(SETTINGS, changes.jsonParseSettings.newValue);
         applyTheme(currentTheme);

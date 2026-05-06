@@ -3,8 +3,82 @@ let THEMES = {};
 const DEFAULT_THEME = 'material';
 const DEFAULT_SETTINGS = { quoteKeys: true, countOnly: false, wrapStrings: false, colorBrackets: true, showCommas: true, firstLevelOnly: false };
 
+const COLOR_FIELDS = [
+    { prop: 'key', label: 'Keys' },
+    { prop: 'string', label: 'Strings' },
+    { prop: 'number', label: 'Numbers' },
+    { prop: 'boolean', label: 'Booleans' },
+    { prop: 'null', label: 'Null' },
+    { prop: 'bracket', label: 'Brackets [ ]' },
+    { prop: 'brace', label: 'Braces { }' },
+    { prop: 'punct', label: 'Punctuation' },
+];
+
+function getCustomColors() {
+    const colors = {};
+    COLOR_FIELDS.forEach(({ prop }) => {
+        const el = document.getElementById(`cp-${prop}`);
+        if (el) colors[prop] = el.value;
+    });
+    return colors;
+}
+
+function setCustomColors(colors) {
+    COLOR_FIELDS.forEach(({ prop }) => {
+        const input = document.getElementById(`cp-${prop}`);
+        const hex = document.getElementById(`cp-${prop}-hex`);
+        const val = colors[prop] || '#ffffff';
+        if (input) input.value = val;
+        if (hex) hex.textContent = val.toUpperCase();
+    });
+}
+
+function showCustomPickers(themeKey) {
+    document.getElementById('custom-theme-pickers').style.display = themeKey === 'custom' ? '' : 'none';
+}
+
+function buildCustomPickers() {
+    const container = document.getElementById('custom-theme-pickers');
+    container.style.display = 'none';
+    const grid = document.createElement('div');
+    grid.className = 'cp-grid';
+    COLOR_FIELDS.forEach(({ prop, label }) => {
+        const item = document.createElement('div');
+        item.className = 'cp-item';
+
+        const lbl = document.createElement('span');
+        lbl.className = 'cp-label';
+        lbl.textContent = label;
+
+        const swatchWrap = document.createElement('div');
+        swatchWrap.className = 'cp-swatch-wrap';
+
+        const input = document.createElement('input');
+        input.type = 'color';
+        input.id = `cp-${prop}`;
+        input.value = '#ffffff';
+
+        const hexDisplay = document.createElement('span');
+        hexDisplay.className = 'cp-hex';
+        hexDisplay.id = `cp-${prop}-hex`;
+        hexDisplay.textContent = '#FFFFFF';
+
+        input.addEventListener('input', () => {
+            hexDisplay.textContent = input.value.toUpperCase();
+            applyPreview('custom', getCurrentSettings());
+        });
+
+        swatchWrap.appendChild(input);
+        swatchWrap.appendChild(hexDisplay);
+        item.appendChild(lbl);
+        item.appendChild(swatchWrap);
+        grid.appendChild(item);
+    });
+    container.appendChild(grid);
+}
+
 function applyPreview(themeKey, settings) {
-    const t = THEMES[themeKey] || THEMES[DEFAULT_THEME];
+    const t = themeKey === 'custom' ? getCustomColors() : (THEMES[themeKey] || THEMES[DEFAULT_THEME]);
     const s = settings || DEFAULT_SETTINGS;
     const preview = document.getElementById('theme-preview');
     const quoteChar = s.quoteKeys ? '"' : '';
@@ -43,9 +117,10 @@ function getCurrentSettings() {
 }
 
 function loadSettings() {
-    chrome.storage.sync.get(['jsonParseTheme', 'jsonParseSettings'], (data) => {
+    chrome.storage.sync.get(['jsonParseTheme', 'jsonParseSettings', 'jsonParseCustomTheme'], (data) => {
         const theme = data.jsonParseTheme || DEFAULT_THEME;
         const settings = Object.assign({}, DEFAULT_SETTINGS, data.jsonParseSettings || {});
+        const customColors = data.jsonParseCustomTheme || THEMES[DEFAULT_THEME];
         document.getElementById('theme').value = theme;
         document.getElementById('quoteKeys').checked = settings.quoteKeys;
         document.getElementById('countOnly').checked = settings.countOnly;
@@ -53,6 +128,8 @@ function loadSettings() {
         document.getElementById('colorBrackets').checked = settings.colorBrackets !== false;
         document.getElementById('showCommas').checked = settings.showCommas !== false;
         document.getElementById('firstLevelOnly').checked = !!settings.firstLevelOnly;
+        setCustomColors(customColors);
+        showCustomPickers(theme);
         applyPreview(theme, settings);
     });
 }
@@ -60,7 +137,9 @@ function loadSettings() {
 function saveSettings() {
     const theme = document.getElementById('theme').value;
     const settings = getCurrentSettings();
-    chrome.storage.sync.set({ jsonParseTheme: theme, jsonParseSettings: settings }, () => {
+    const toSave = { jsonParseTheme: theme, jsonParseSettings: settings };
+    if (theme === 'custom') toSave.jsonParseCustomTheme = getCustomColors();
+    chrome.storage.sync.set(toSave, () => {
         const status = document.getElementById('status');
         status.textContent = 'Settings saved!';
         status.classList.add('success', 'show');
@@ -85,12 +164,14 @@ function resetSettings() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    buildCustomPickers();
     fetch(chrome.runtime.getURL('themes.json'))
         .then(r => r.json())
         .then(themes => {
             THEMES = themes;
             loadSettings();
             document.getElementById('theme').addEventListener('change', (e) => {
+                showCustomPickers(e.target.value);
                 applyPreview(e.target.value, getCurrentSettings());
             });
             document.getElementById('quoteKeys').addEventListener('change', () => {
