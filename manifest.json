@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "JSON Parse",
   "version": "1.1.0",
-  "description": "Automatically turns JSON on any page into an interactive tree view — in a side panel, and directly on raw JSON pages — with syntax highlighting, custom themes, full-text search, custom JSON input, and more.",
+  "description": "Turns JSON on any page into an interactive tree view — side panel UI, raw page takeover, custom themes, search and more.",
   "permissions": [
     "activeTab",
     "scripting",
