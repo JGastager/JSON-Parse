@@ -158,8 +158,23 @@ nav ul li.active {
   padding: 12px 10px;
   width: fit-content;
   min-width: 100%;
+  gap: 6px;
   display: flex;
   flex-direction: column;
+  position: relative;
+}
+
+.custom-json-placeholder {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  right: 18px;
+  font-family: 'Roboto', Arial, sans-serif;
+  font-size: 13px;
+  color: var(--jp-dimmed);
+  pointer-events: none;
+  user-select: none;
+  line-height: 1.6;
 }
 
 .custom-json-input {
@@ -172,11 +187,11 @@ nav ul li.active {
   border: none;
   outline: none;
   resize: none;
-  padding: 12px 10px 8px;
   font-family: 'Roboto Mono', 'Consolas', monospace;
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.6;
-  caret-color: var(--jp-primary);
+  caret-color: var(--jp-text);
+  padding: 6px 8px;
 }
 
 .custom-json-error {
@@ -207,13 +222,16 @@ nav ul li.active {
   left: 10px;
   bottom: 12px;
   width: fit-content;
+  pointer-events: none;
 }
 
 .custom-json-parse-btn {
+  pointer-events: auto;
   display: inline-flex;
   justify-content: center;
   align-items: center;
-  padding: 10px 20px;
+  gap: 6px;
+  padding: 8px 8px 8px 12px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -232,6 +250,18 @@ nav ul li.active {
 .custom-json-parse-btn:hover {
   background: var(--jp-primary-hover);
   border-color: var(--jp-primary);
+}
+
+.i-parse-arrow {
+  display: block;
+  width: 16px;
+  height: 16px;
+  background-color: var(--jp-primary);
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath fill='%23000' d='M3.75 10a.75.75 0 0 1 .75-.75h9.69L10.72 5.78a.75.75 0 0 1 1.06-1.06l4.5 4.5a.75.75 0 0 1 0 1.06l-4.5 4.5a.75.75 0 1 1-1.06-1.06l3.47-3.47H4.5A.75.75 0 0 1 3.75 10'/%3E%3C/svg%3E");
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  flex-shrink: 0;
 }
 
 main {
@@ -303,7 +333,7 @@ body.search-open main {
   border: none;
   outline: none;
   color: var(--jp-text);
-  font-family: 'Roboto Mono', monospace;
+  font-family: 'Roboto', Arial, sans-serif;
   font-size: 12px;
   min-width: 0;
 }

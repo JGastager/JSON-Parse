@@ -739,13 +739,22 @@ function createPendingTab() {
     const textarea = document.createElement('textarea');
     textarea.className = 'custom-json-input';
     textarea.spellcheck = false;
-    textarea.placeholder = 'Paste or type JSON here…';
+    const placeholder = createEl('div', 'custom-json-placeholder');
+    placeholder.textContent = 'Paste or type JSON here…';
+    textarea.addEventListener('input', () => {
+        placeholder.style.display = textarea.value ? 'none' : '';
+    });
     const errorMsg = createEl('div', 'custom-json-error');
     const footer = createEl('div', 'custom-json-footer');
     const parseBtn = createEl('button', 'custom-json-parse-btn');
-    parseBtn.textContent = 'Parse';
+    const parseBtnLabel = createEl('span');
+    parseBtnLabel.textContent = 'Parse';
+    parseBtn.appendChild(parseBtnLabel);
+    parseBtn.appendChild(createEl('span', 'i-parse-arrow'));
+    parseBtn.dataset.tooltip = 'Parse JSON  Ctrl+Enter';
     footer.appendChild(parseBtn);
     panel.appendChild(errorMsg);
+    panel.appendChild(placeholder);
     panel.appendChild(textarea);
     panel.appendChild(footer);
     panelsEl.appendChild(panel);
