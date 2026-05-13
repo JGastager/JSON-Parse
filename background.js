@@ -41,6 +41,11 @@ async function updateIcon(tabId) {
         const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         // Raw JSON document
         if (/json/i.test(document.contentType)) return { hasJson: true, isDark: dark };
+        // .json file URL (may be served as text/plain without a matching content-type)
+        if (/\.json(\?|#|$)/i.test(location.href)) {
+          const text = (document.body?.innerText || '').trim();
+          if (text) try { JSON.parse(text); return { hasJson: true, isDark: dark }; } catch { }
+        }
         // JSON in <pre> tags
         for (const pre of document.querySelectorAll('pre')) {
           const text = (pre.textContent || '').trim();

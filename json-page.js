@@ -5,20 +5,29 @@
     // ── Detection ────────────────────────────────────────────────────────────
     // Only act when the entire page is a JSON document.
     const isJsonContentType = document.contentType === 'application/json';
+    const isJsonUrl = /\.json(\?|#|$)/i.test(location.href);
     const isSinglePrePage = (
         document.body &&
         document.body.children.length === 1 &&
         document.body.children[0].tagName === 'PRE'
     );
-    if (!isJsonContentType && !isSinglePrePage) return;
+    if (!isJsonContentType && !isSinglePrePage && !isJsonUrl) return;
 
     const pre = document.querySelector('pre');
-    if (!pre) return;
-    const raw = (pre.textContent || '').trim();
+    const raw = ((pre ? pre.textContent : document.body?.innerText) || '').trim();
     if (!raw) return;
 
     let parsed;
     try { parsed = JSON.parse(raw); } catch { return; }
+
+    // Stash raw JSON in <head> so background icon-detection and the side-panel
+    // can still find the data after renderPage() replaces document.body.
+    (function () {
+        const s = document.createElement('script');
+        s.type = 'application/json';
+        s.textContent = raw;
+        document.head.appendChild(s);
+    })();
 
     // ── Derive a label (mirrors sidepanel.js tab-naming logic) ───────────────
     function getTypeName(val) {
