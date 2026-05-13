@@ -472,6 +472,9 @@ function refresh() {
         chrome.scripting.executeScript({
             target: { tabId: tab.id },
             func: () => {
+                // Page already taken over by json-page.js — nothing to show in sidepanel.
+                if (document.documentElement.dataset.jpJson) return [];
+
                 const results = [];
 
                 function tryParseJson(text) {

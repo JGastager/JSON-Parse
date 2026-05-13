@@ -20,14 +20,9 @@
     let parsed;
     try { parsed = JSON.parse(raw); } catch { return; }
 
-    // Stash raw JSON in <head> so background icon-detection and the side-panel
-    // can still find the data after renderPage() replaces document.body.
-    (function () {
-        const s = document.createElement('script');
-        s.type = 'application/json';
-        s.textContent = raw;
-        document.head.appendChild(s);
-    })();
+    // Mark the page so background.js icon-detection knows JSON is present
+    // even after renderPage() replaces document.body.
+    document.documentElement.dataset.jpJson = '1';
 
     // ── Derive a label (mirrors sidepanel.js tab-naming logic) ───────────────
     function getTypeName(val) {
