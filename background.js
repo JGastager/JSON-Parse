@@ -37,30 +37,13 @@ async function updateIcon(tabId) {
   try {
     const [result] = await chrome.scripting.executeScript({
       target: { tabId },
-      func: () => {
-        const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        // Raw JSON document
-        if (/json/i.test(document.contentType)) return { hasJson: true, isDark: dark };
-        // json-page.js has taken over this tab (e.g. a .json file)
-        if (document.documentElement.dataset.jpJson) return { hasJson: true, isDark: dark };
-        // JSON in <pre> tags
-        for (const pre of document.querySelectorAll('pre')) {
-          const text = (pre.textContent || '').trim();
-          if (text) try { JSON.parse(text); return { hasJson: true, isDark: dark }; } catch { }
-        }
-        // JSON in <script type="application/json"> or <script type="application/ld+json">
-        for (const script of document.querySelectorAll('script[type="application/json"], script[type="application/ld+json"]')) {
-          const text = (script.textContent || '').trim();
-          if (text) try { JSON.parse(text); return { hasJson: true, isDark: dark }; } catch { }
-        }
-        // JSON in standalone <code> elements (not inside <pre>)
-        for (const code of document.querySelectorAll('code')) {
-          if (code.closest('pre')) continue;
-          const text = (code.textContent || '').trim();
-          if (text) try { JSON.parse(text); return { hasJson: true, isDark: dark }; } catch { }
-        }
-        return { hasJson: false, isDark: dark };
-      }
+      func: () => ({
+        // content.js sets jpHasJson on initial scan; json-page.js sets jpJson on takeover.
+        hasJson: !!(document.documentElement.dataset.jpJson ||
+          document.documentElement.dataset.jpHasJson ||
+          /json/i.test(document.contentType)),
+        isDark: window.matchMedia('(prefers-color-scheme: dark)').matches,
+      }),
     });
     hasJson = result?.result?.hasJson === true;
     isDark = result?.result?.isDark === true;

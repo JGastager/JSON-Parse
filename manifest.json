@@ -1,7 +1,7 @@
 ﻿{
   "manifest_version": 3,
   "name": "JSON Parse",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Turns JSON on any page into an interactive tree view — side panel UI, raw page takeover, custom themes, search and more.",
   "permissions": [
     "activeTab",
@@ -23,7 +23,7 @@
     "default_icon": "icon-dark.png"
   },
   "web_accessible_resources": [
-    { "resources": ["themes.json", "style.css", "icon.png", "icon-array.png", "icon-active.png", "icon-light.png", "icon-dark.png"], "matches": ["<all_urls>"] }
+    { "resources": ["themes.json", "style.css", "tree-render.js", "icon.png", "icon-array.png", "icon-active.png", "icon-light.png", "icon-dark.png"], "matches": ["<all_urls>"] }
   ],
   "content_scripts": [
     {
@@ -33,7 +33,7 @@
     },
     {
       "matches": ["<all_urls>"],
-      "js": ["json-page.js"],
+      "js": ["tree-render.js", "json-page.js"],
       "run_at": "document_idle"
     }
   ],
