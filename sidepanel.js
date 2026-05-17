@@ -21,12 +21,13 @@ function applyTheme(themeKey) {
 
 const { buildJsonTree, createEl, createSpan, setupContextMenu, setupPathTooltip,
     getTypeName, getRootTypeBadge, loadSettings,
-    highlightText, expandAncestors, renderAllDescendants } = JsonTreeRenderer;
+    highlightText, expandAncestors, renderAllDescendants, buildSearchRegex } = JsonTreeRenderer;
 const SETTINGS = JsonTreeRenderer.SETTINGS;
 
 let currentTheme = 'material';
 let pasteReady = false;
 let _refreshSeq = 0;
+let _reRunSearch = null;
 
 function setPasteReady(val) {
     pasteReady = val;
@@ -98,6 +99,7 @@ function renderJsonBlocks(jsonBlocks) {
             panelsEl.querySelectorAll('.json-panel').forEach(p => { p.style.display = 'none'; });
             tab.classList.add('active');
             panel.style.display = '';
+            if (_reRunSearch) _reRunSearch();
         });
     });
 }
@@ -187,10 +189,15 @@ function setupSearch() {
     const prevBtn = document.getElementById('search-prev');
     const nextBtn = document.getElementById('search-next');
     const closeBtn = document.getElementById('search-close');
+    const caseBtn = document.getElementById('search-opt-case');
+    const wordBtn = document.getElementById('search-opt-word');
+    const regexBtn = document.getElementById('search-opt-regex');
 
     const state = { matches: [], current: -1 };
+    const opts = { matchCase: false, wholeWord: false, useRegex: false };
 
     function clearHighlights() {
+        input.classList.remove('search-error');
         document.querySelectorAll('.search-highlight').forEach(el => {
             const parent = el.parentNode;
             parent.replaceChild(document.createTextNode(el.textContent), el);
@@ -203,12 +210,16 @@ function setupSearch() {
     function runSearch(query) {
         clearHighlights();
         if (!query) { updateCount(); return; }
-        document.querySelectorAll('.json-panel').forEach(panel => {
-            renderAllDescendants(panel);
-            panel.querySelectorAll('.json-key, .json-string, .json-number, .json-boolean, .json-null').forEach(span => {
-                highlightText(span, query, state.matches);
+        const { regex, error } = buildSearchRegex(query, opts);
+        input.classList.toggle('search-error', error);
+        if (error) { updateCount(); return; }
+        const activePanel = Array.from(document.querySelectorAll('.json-panel')).find(p => p.style.display !== 'none');
+        if (activePanel) {
+            renderAllDescendants(activePanel);
+            activePanel.querySelectorAll('.json-key, .json-string, .json-number, .json-boolean, .json-null').forEach(span => {
+                highlightText(span, regex, state.matches);
             });
-        });
+        }
         state.matches.forEach(mark => expandAncestors(mark));
         updateCount();
         if (state.matches.length) navigateTo(0);
@@ -221,18 +232,6 @@ function setupSearch() {
         const active = state.matches[state.current];
         active.classList.add('active');
         expandAncestors(active);
-        const panel = active.closest('.json-panel');
-        if (panel) {
-            const panels = Array.from(document.querySelectorAll('.json-panel'));
-            const tabs = Array.from(document.querySelectorAll('#json-tabs li'));
-            const pi = panels.indexOf(panel);
-            if (pi !== -1 && panel.style.display === 'none') {
-                panels.forEach(p => { p.style.display = 'none'; });
-                tabs.forEach(t => t.classList.remove('active'));
-                panel.style.display = '';
-                if (tabs[pi]) tabs[pi].classList.add('active');
-            }
-        }
         active.scrollIntoView({ block: 'center', behavior: 'smooth' });
         updateCount();
     }
@@ -265,10 +264,23 @@ function setupSearch() {
         countEl.textContent = '';
     }
 
+    function toggleOpt(btn, key) {
+        opts[key] = !opts[key];
+        btn.classList.toggle('active', opts[key]);
+        runSearch(input.value);
+    }
+
+    _reRunSearch = () => runSearch(input.value);
+
     document.addEventListener('keydown', (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'f') { e.preventDefault(); openSearch(); }
         if ((e.ctrlKey || e.metaKey) && e.key === ',') { e.preventDefault(); window.open(chrome.runtime.getURL('options.html'), '_blank'); }
         if (e.key === 'Escape' && bar.classList.contains('open')) closeSearch();
+        if (e.altKey && bar.classList.contains('open')) {
+            if (e.key === 'c') { e.preventDefault(); toggleOpt(caseBtn, 'matchCase'); }
+            if (e.key === 'w') { e.preventDefault(); toggleOpt(wordBtn, 'wholeWord'); }
+            if (e.key === 'r') { e.preventDefault(); toggleOpt(regexBtn, 'useRegex'); }
+        }
     }, true);
 
     input.addEventListener('input', () => runSearch(input.value));
@@ -281,6 +293,9 @@ function setupSearch() {
     prevBtn.addEventListener('click', () => navigateTo(state.current - 1));
     nextBtn.addEventListener('click', () => navigateTo(state.current + 1));
     closeBtn.addEventListener('click', closeSearch);
+    caseBtn.addEventListener('click', () => toggleOpt(caseBtn, 'matchCase'));
+    wordBtn.addEventListener('click', () => toggleOpt(wordBtn, 'wholeWord'));
+    regexBtn.addEventListener('click', () => toggleOpt(regexBtn, 'useRegex'));
 }
 
 // -- Add-JSON via paste -----------------------------------------------------

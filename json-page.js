@@ -3,7 +3,8 @@
     'use strict';
 
     const { buildJsonTree, createEl, createSpan, setupContextMenu, setupPathTooltip,
-        getTypeName, getRootTypeBadge, labelFromObj, loadSettings, renderAllDescendants } = JsonTreeRenderer;
+        getTypeName, getRootTypeBadge, labelFromObj, loadSettings, renderAllDescendants,
+        highlightText, buildSearchRegex } = JsonTreeRenderer;
     const SETTINGS = JsonTreeRenderer.SETTINGS;
 
     // ── Detection ────────────────────────────────────────────────────────────
@@ -126,14 +127,27 @@
         closeBtn.dataset.tooltip = 'Close search  Esc';
         closeBtn.appendChild(createEl('span', 'i-search-close'));
 
-        wrap.append(icon, input, countEl, prevBtn, nextBtn, closeBtn);
+        const caseBtn = createEl('button', 'search-opt-btn');
+        caseBtn.dataset.tooltip = 'Match Case  Alt+C';
+        caseBtn.textContent = 'Aa';
+        const wordBtn = createEl('button', 'search-opt-btn');
+        wordBtn.dataset.tooltip = 'Match Whole Word  Alt+W';
+        wordBtn.textContent = '\\b';
+        const regexBtn = createEl('button', 'search-opt-btn');
+        regexBtn.dataset.tooltip = 'Use Regex  Alt+R';
+        regexBtn.textContent = '.*';
+        const optSep = createEl('span', 'search-opt-sep');
+
+        wrap.append(icon, input, caseBtn, wordBtn, regexBtn, optSep, countEl, prevBtn, nextBtn, closeBtn);
 
         // Place wrap inside the same button group as the search button
         headerBtns.insertBefore(wrap, searchBtn);
 
         const state = { matches: [], current: -1 };
+        const opts = { matchCase: false, wholeWord: false, useRegex: false };
 
         function clearHighlights() {
+            input.classList.remove('search-error');
             root.querySelectorAll('.search-highlight').forEach(el => {
                 const parent = el.parentNode;
                 parent.replaceChild(document.createTextNode(el.textContent), el);
@@ -143,35 +157,15 @@
             state.current = -1;
         }
 
-        function highlightSpan(span, query) {
-            const text = span.textContent;
-            const lower = text.toLowerCase();
-            const q = query.toLowerCase();
-            const positions = [];
-            let idx = 0;
-            while ((idx = lower.indexOf(q, idx)) !== -1) { positions.push(idx); idx += q.length; }
-            if (!positions.length) return;
-            const frag = document.createDocumentFragment();
-            let last = 0;
-            positions.forEach(start => {
-                if (start > last) frag.appendChild(document.createTextNode(text.slice(last, start)));
-                const mark = document.createElement('mark');
-                mark.className = 'search-highlight';
-                mark.textContent = text.slice(start, start + query.length);
-                frag.appendChild(mark);
-                last = start + query.length;
-            });
-            if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
-            span.replaceChildren(frag);
-            span.querySelectorAll('.search-highlight').forEach(m => state.matches.push(m));
-        }
-
         function runSearch(query) {
             clearHighlights();
             if (!query) { updateCount(); return; }
+            const { regex, error } = buildSearchRegex(query, opts);
+            input.classList.toggle('search-error', error);
+            if (error) { updateCount(); return; }
             renderAllDescendants(root);
             root.querySelectorAll('.json-key, .json-string, .json-number, .json-boolean, .json-null').forEach(span => {
-                highlightSpan(span, query);
+                highlightText(span, regex, state.matches);
             });
             state.matches.forEach(mark => {
                 let el = mark.parentElement;
@@ -251,11 +245,22 @@
 
         searchBtn.addEventListener('click', openSearch);
 
+        function toggleOpt(btn, key) {
+            opts[key] = !opts[key];
+            btn.classList.toggle('active', opts[key]);
+            runSearch(input.value);
+        }
+
         document.addEventListener('keydown', (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'f') { e.preventDefault(); openSearch(); }
             if ((e.ctrlKey || e.metaKey) && e.key === '\\') { e.preventDefault(); rawBtn.click(); }
             if ((e.ctrlKey || e.metaKey) && e.key === ',') { e.preventDefault(); settingsBtn.click(); }
             if (e.key === 'Escape' && wrap.style.display !== 'none') closeSearch();
+            if (e.altKey && wrap.style.display !== 'none') {
+                if (e.key === 'c') { e.preventDefault(); toggleOpt(caseBtn, 'matchCase'); }
+                if (e.key === 'w') { e.preventDefault(); toggleOpt(wordBtn, 'wholeWord'); }
+                if (e.key === 'r') { e.preventDefault(); toggleOpt(regexBtn, 'useRegex'); }
+            }
         }, true);
 
         input.addEventListener('input', () => runSearch(input.value));
@@ -268,6 +273,9 @@
         prevBtn.addEventListener('click', () => navigateTo(state.current - 1));
         nextBtn.addEventListener('click', () => navigateTo(state.current + 1));
         closeBtn.addEventListener('click', closeSearch);
+        caseBtn.addEventListener('click', () => toggleOpt(caseBtn, 'matchCase'));
+        wordBtn.addEventListener('click', () => toggleOpt(wordBtn, 'wholeWord'));
+        regexBtn.addEventListener('click', () => toggleOpt(regexBtn, 'useRegex'));
     }
 
     // ── Page takeover ────────────────────────────────────────────────────────

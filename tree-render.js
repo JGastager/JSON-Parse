@@ -261,29 +261,36 @@ const JsonTreeRenderer = (() => {
         }
     }
 
-    function highlightText(span, query, matchStorage) {
+    function buildSearchRegex(query, opts) {
+        try {
+            let pattern = opts.useRegex ? query : query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            if (opts.wholeWord) pattern = `\\b(?:${pattern})\\b`;
+            return { regex: new RegExp(pattern, opts.matchCase ? 'g' : 'gi'), error: false };
+        } catch { return { regex: null, error: true }; }
+    }
+
+    function highlightText(span, regex, matchStorage) {
         const text = span.textContent;
-        const lower = text.toLowerCase();
-        const q = query.toLowerCase();
-        const matches = [];
-        let idx = 0;
-        while ((idx = lower.indexOf(q, idx)) !== -1) {
-            matches.push(idx);
-            idx += q.length;
+        regex.lastIndex = 0;
+        const positions = [];
+        let m;
+        while ((m = regex.exec(text)) !== null) {
+            if (m[0].length === 0) { regex.lastIndex++; continue; }
+            positions.push({ start: m.index, len: m[0].length });
         }
-        if (!matches.length) return;
+        if (!positions.length) return;
 
         const frag = document.createDocumentFragment();
         let last = 0;
-        matches.forEach(start => {
+        positions.forEach(({ start, len }) => {
             if (start > last) {
                 frag.appendChild(document.createTextNode(text.slice(last, start)));
             }
             const mark = document.createElement('mark');
             mark.className = 'search-highlight';
-            mark.textContent = text.slice(start, start + query.length);
+            mark.textContent = text.slice(start, start + len);
             frag.appendChild(mark);
-            last = start + query.length;
+            last = start + len;
         });
 
         if (last < text.length) {
@@ -499,7 +506,7 @@ const JsonTreeRenderer = (() => {
         applyThemeVars,
         buildJsonTree,
         setupContextMenu, setupPathTooltip,
-        expandAncestors, highlightText,
+        expandAncestors, highlightText, buildSearchRegex,
         getTypeName, getRootTypeBadge, labelFromObj,
         loadSettings, renderAllDescendants,
     };
