@@ -21,7 +21,7 @@ function applyTheme(themeKey) {
 
 const { buildJsonTree, createEl, createSpan, setupContextMenu, setupPathTooltip,
     getTypeName, getRootTypeBadge, loadSettings,
-    highlightText, expandAncestors } = JsonTreeRenderer;
+    highlightText, expandAncestors, renderAllDescendants } = JsonTreeRenderer;
 const SETTINGS = JsonTreeRenderer.SETTINGS;
 
 let currentTheme = 'material';
@@ -204,6 +204,7 @@ function setupSearch() {
         clearHighlights();
         if (!query) { updateCount(); return; }
         document.querySelectorAll('.json-panel').forEach(panel => {
+            renderAllDescendants(panel);
             panel.querySelectorAll('.json-key, .json-string, .json-number, .json-boolean, .json-null').forEach(span => {
                 highlightText(span, query, state.matches);
             });

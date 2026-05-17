@@ -3,7 +3,7 @@
     'use strict';
 
     const { buildJsonTree, createEl, createSpan, setupContextMenu, setupPathTooltip,
-        getTypeName, getRootTypeBadge, labelFromObj, loadSettings } = JsonTreeRenderer;
+        getTypeName, getRootTypeBadge, labelFromObj, loadSettings, renderAllDescendants } = JsonTreeRenderer;
     const SETTINGS = JsonTreeRenderer.SETTINGS;
 
     // ── Detection ────────────────────────────────────────────────────────────
@@ -169,6 +169,7 @@
         function runSearch(query) {
             clearHighlights();
             if (!query) { updateCount(); return; }
+            renderAllDescendants(root);
             root.querySelectorAll('.json-key, .json-string, .json-number, .json-boolean, .json-null').forEach(span => {
                 highlightSpan(span, query);
             });

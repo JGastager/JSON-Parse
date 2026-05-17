@@ -46,6 +46,40 @@ const JsonTreeRenderer = (() => {
 
     // -- Tree builder ---------------------------------------------------------
 
+    function _renderChildren(container, value, isArray, childKeys, depth, path) {
+        if (isArray) {
+            value.forEach((item, i) => {
+                buildJsonTree(container, item, null, depth + 1, i === value.length - 1, `${path}[${i}]`, i);
+            });
+        } else {
+            childKeys.forEach((k, i) => {
+                const childPath = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(k)
+                    ? `${path}.${k}`
+                    : `${path}["${k.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"]`;
+                buildJsonTree(container, value[k], k, depth + 1, i === childKeys.length - 1, childPath);
+            });
+        }
+    }
+
+    function _renderLazy(childContainer) {
+        if (!childContainer._lazyData) return;
+        const { value, isArray, childKeys, depth, path } = childContainer._lazyData;
+        childContainer._lazyData = null;
+        _renderChildren(childContainer, value, isArray, childKeys, depth, path);
+    }
+
+    /** Force-renders all deferred (lazy) subtrees under `root`. Called before DOM-based search. */
+    function renderAllDescendants(root) {
+        const queue = [root];
+        while (queue.length) {
+            const node = queue.shift();
+            for (const child of Array.from(node.children)) {
+                if (child._lazyData) _renderLazy(child);
+                if (child.children.length) queue.push(child);
+            }
+        }
+    }
+
     /**
      * Recursively builds JSON tree DOM nodes into `container`.
      * All user-supplied content is set via textContent, never innerHTML.
@@ -159,17 +193,11 @@ const JsonTreeRenderer = (() => {
         childContainer.style.setProperty('--indent-x', `${depth * 20 + 7}px`);
         childContainer.style.display = collapsed ? 'none' : '';
 
-        if (isArray) {
-            value.forEach((item, i) => {
-                buildJsonTree(childContainer, item, null, depth + 1, i === value.length - 1, `${path}[${i}]`, i);
-            });
+        if (collapsed) {
+            // Defer child DOM creation until first expand
+            childContainer._lazyData = { value, isArray, childKeys, depth, path };
         } else {
-            childKeys.forEach((k, i) => {
-                const childPath = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(k)
-                    ? `${path}.${k}`
-                    : `${path}["${k.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"]`;
-                buildJsonTree(childContainer, value[k], k, depth + 1, i === childKeys.length - 1, childPath);
-            });
+            _renderChildren(childContainer, value, isArray, childKeys, depth, path);
         }
         container.appendChild(childContainer);
 
@@ -195,6 +223,7 @@ const JsonTreeRenderer = (() => {
                 function setCollapsible(el, expand) {
                     if (!el._jsonCollapsible) return;
                     const c = el._jsonCollapsible;
+                    if (expand && c.childContainer._lazyData) _renderLazy(c.childContainer);
                     c.childContainer.style.display = expand ? '' : 'none';
                     c.closingRow.style.display = expand ? '' : 'none';
                     c.summary.style.display = expand ? 'none' : 'inline';
@@ -205,6 +234,7 @@ const JsonTreeRenderer = (() => {
                 }
                 setCollapsible(row, isCollapsed);
             } else {
+                if (isCollapsed && childContainer._lazyData) _renderLazy(childContainer);
                 childContainer.style.display = isCollapsed ? '' : 'none';
                 closingRow.style.display = isCollapsed ? '' : 'none';
                 summary.style.display = isCollapsed ? 'none' : 'inline';
@@ -306,6 +336,7 @@ const JsonTreeRenderer = (() => {
                         if (!targetRow._jsonCollapsible) { hideMenu(); return; }
                         const c = targetRow._jsonCollapsible;
                         const collapsed = c.childContainer.style.display === 'none';
+                        if (collapsed && c.childContainer._lazyData) _renderLazy(c.childContainer);
                         c.childContainer.style.display = collapsed ? '' : 'none';
                         c.closingRow.style.display = collapsed ? '' : 'none';
                         c.summary.style.display = collapsed ? 'none' : 'inline';
@@ -470,6 +501,6 @@ const JsonTreeRenderer = (() => {
         setupContextMenu, setupPathTooltip,
         expandAncestors, highlightText,
         getTypeName, getRootTypeBadge, labelFromObj,
-        loadSettings,
+        loadSettings, renderAllDescendants,
     };
 })();
