@@ -19,7 +19,7 @@ function applyTheme(themeKey) {
     applyThemeColors(THEMES[themeKey] || THEMES.material);
 }
 
-const { buildJsonTree, createEl, createSpan, setupContextMenu, setupPathTooltip,
+const { buildJsonTree, createEl, createSpan, setupContextMenu, setupPathTooltip, setupPathPreview,
     getTypeName, getRootTypeBadge, loadSettings,
     highlightText, expandAncestors, renderAllDescendants, buildSearchRegex } = JsonTreeRenderer;
 const SETTINGS = JsonTreeRenderer.SETTINGS;
@@ -28,6 +28,7 @@ let currentTheme = 'material';
 let pasteReady = false;
 let _refreshSeq = 0;
 let _reRunSearch = null;
+let _syncPanelToolbar = null;
 
 function setPasteReady(val) {
     pasteReady = val;
@@ -44,12 +45,18 @@ function applySettings() {
 function renderJsonBlocks(jsonBlocks) {
     const tabsEl = document.getElementById('json-tabs');
     const panelsEl = document.getElementById('json-panels');
+    const pathBar = document.getElementById('jp-path-preview');
+    const addLi = document.getElementById('add-json-li');
 
     tabsEl.innerHTML = '';
     panelsEl.innerHTML = '';
     pendingTab = null;
 
+    const toolbarEl = document.getElementById('panel-toolbar');
+    _syncPanelToolbar = null;
+
     if (!jsonBlocks || jsonBlocks.length === 0) {
+        toolbarEl.style.display = 'none';
         const empty = createEl('div', 'empty-state');
         const msg = createEl('p');
         msg.textContent = 'No JSON found on this page.';
@@ -67,6 +74,8 @@ function renderJsonBlocks(jsonBlocks) {
         empty.appendChild(msg);
         empty.appendChild(hint);
         panelsEl.appendChild(empty);
+        if (pathBar) panelsEl.prepend(pathBar);
+        tabsEl.appendChild(addLi);
         return;
     }
     setPasteReady(false);
@@ -88,9 +97,16 @@ function renderJsonBlocks(jsonBlocks) {
         const panel = createEl('section', 'json-panel');
         panel.style.display = i === 0 ? '' : 'none';
 
+        // -- Tree & raw views ----------------------------------------------
         const tree = createEl('div', 'json-tree');
         buildJsonTree(tree, data, null, 0, true);
+
+        const rawView = createEl('pre', 'panel-raw-json');
+        rawView.textContent = JSON.stringify(data, null, 2);
+        rawView.style.display = 'none';
+
         panel.appendChild(tree);
+        panel.appendChild(rawView);
         panelsEl.appendChild(panel);
 
         // -- Tab click -----------------------------------------------------
@@ -100,8 +116,48 @@ function renderJsonBlocks(jsonBlocks) {
             tab.classList.add('active');
             panel.style.display = '';
             if (_reRunSearch) _reRunSearch();
+            if (_syncPanelToolbar) _syncPanelToolbar();
         });
     });
+    if (pathBar) panelsEl.prepend(pathBar);
+    tabsEl.appendChild(addLi);
+    toolbarEl.style.display = '';
+
+    // Reset listeners by replacing buttons with fresh clones
+    const oldSearchBtn = document.getElementById('toolbar-search-btn');
+    const oldRawBtn = document.getElementById('toolbar-raw-btn');
+    const searchBtn = oldSearchBtn.cloneNode(true);
+    const rawBtn = oldRawBtn.cloneNode(true);
+    oldSearchBtn.replaceWith(searchBtn);
+    oldRawBtn.replaceWith(rawBtn);
+    const rawIcon = rawBtn.querySelector('.i-raw');
+
+    function syncToolbar() {
+        const activePanel = Array.from(panelsEl.querySelectorAll('.json-panel'))
+            .find(p => p.style.display !== 'none');
+        const isRaw = activePanel?._showingRaw || false;
+        rawBtn.classList.toggle('active', isRaw);
+    }
+
+    searchBtn.addEventListener('click', () => {
+        if (window._openSearch) window._openSearch();
+    });
+
+    rawBtn.addEventListener('click', () => {
+        const activePanel = Array.from(panelsEl.querySelectorAll('.json-panel'))
+            .find(p => p.style.display !== 'none');
+        if (!activePanel) return;
+        const tree = activePanel.querySelector('.json-tree');
+        const rawView = activePanel.querySelector('.panel-raw-json');
+        const showingRaw = activePanel._showingRaw || false;
+        activePanel._showingRaw = !showingRaw;
+        if (tree) tree.style.display = showingRaw ? '' : 'none';
+        if (rawView) rawView.style.display = showingRaw ? 'none' : '';
+        syncToolbar();
+    });
+
+    _syncPanelToolbar = syncToolbar;
+    syncToolbar();
 }
 
 // -- Data extraction -------------------------------------------------------
@@ -271,6 +327,7 @@ function setupSearch() {
     }
 
     _reRunSearch = () => runSearch(input.value);
+    window._openSearch = openSearch;
 
     document.addEventListener('keydown', (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'f') { e.preventDefault(); openSearch(); }
@@ -319,7 +376,7 @@ function createPendingTab() {
 
     const tab = document.createElement('li');
     tab.appendChild(document.createTextNode(label));
-    tabsEl.appendChild(tab);
+    tabsEl.insertBefore(tab, document.getElementById('add-json-li'));
 
     const panel = createEl('section', 'json-panel');
     const textarea = document.createElement('textarea');
@@ -344,6 +401,8 @@ function createPendingTab() {
     panel.appendChild(textarea);
     panel.appendChild(footer);
     panelsEl.appendChild(panel);
+    const pathBar = document.getElementById('jp-path-preview');
+    if (pathBar) panelsEl.prepend(pathBar);
 
     tab.addEventListener('click', () => {
         tabsEl.querySelectorAll('li').forEach(t => t.classList.remove('active'));
@@ -449,6 +508,7 @@ function setupPasteJson() {
 document.addEventListener('DOMContentLoaded', () => {
     setupContextMenu(document.body);
     setupPathTooltip(document.body);
+    setupPathPreview(document.getElementById('json-panels'), document.getElementById('jp-path-preview'));
     setupSearch();
     setupPasteJson();
 

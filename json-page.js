@@ -2,7 +2,7 @@
 (function () {
     'use strict';
 
-    const { buildJsonTree, createEl, createSpan, setupContextMenu, setupPathTooltip,
+    const { buildJsonTree, createEl, createSpan, setupContextMenu, setupPathTooltip, setupPathPreview,
         getTypeName, getRootTypeBadge, labelFromObj, loadSettings, renderAllDescendants,
         highlightText, buildSearchRegex } = JsonTreeRenderer;
     const SETTINGS = JsonTreeRenderer.SETTINGS;
@@ -375,6 +375,7 @@
         document.body.appendChild(root);
         setupContextMenu(root);
         setupPathTooltip(root);
+        setupPathPreview(body);
         setupSearch(root, header, headerBtns, body);
 
         // Update page title

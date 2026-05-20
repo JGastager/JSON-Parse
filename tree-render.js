@@ -46,6 +46,39 @@ const JsonTreeRenderer = (() => {
 
     // -- Tree builder ---------------------------------------------------------
 
+    function createCopyButtons(row) {
+        const wrap = createEl('span', 'jp-row-actions');
+
+        const copyValBtn = createEl('button', 'jp-copy-btn');
+        copyValBtn.setAttribute('aria-label', 'Copy value');
+        copyValBtn.setAttribute('data-tooltip', 'Copy value');
+        copyValBtn.appendChild(createEl('span', 'jp-copy-icon jp-copy-val-icon'));
+        copyValBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const d = row._jpData;
+            if (!d) return;
+            const text = d.value === null ? 'null'
+                : typeof d.value === 'object' ? JSON.stringify(d.value, null, 2)
+                    : String(d.value);
+            navigator.clipboard.writeText(text).catch(() => { });
+        });
+
+        const copyPathBtn = createEl('button', 'jp-copy-btn');
+        copyPathBtn.setAttribute('aria-label', 'Copy path');
+        copyPathBtn.setAttribute('data-tooltip', 'Copy path');
+        copyPathBtn.appendChild(createEl('span', 'jp-copy-icon jp-copy-path-icon'));
+        copyPathBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const d = row._jpData;
+            if (!d) return;
+            navigator.clipboard.writeText(d.path || '').catch(() => { });
+        });
+
+        wrap.appendChild(copyValBtn);
+        wrap.appendChild(copyPathBtn);
+        return wrap;
+    }
+
     function _renderChildren(container, value, isArray, childKeys, depth, path) {
         if (isArray) {
             value.forEach((item, i) => {
@@ -101,6 +134,7 @@ const JsonTreeRenderer = (() => {
             row.insertBefore(createSpan('json-toggle-spacer', ''), row.firstChild);
             row.appendChild(createSpan('json-null', 'null'));
             if (!isLast && SETTINGS.showCommas !== false) row.appendChild(createSpan('json-punct', ','));
+            row.appendChild(createCopyButtons(row));
             container.appendChild(row);
             return;
         }
@@ -108,6 +142,7 @@ const JsonTreeRenderer = (() => {
             row.insertBefore(createSpan('json-toggle-spacer', ''), row.firstChild);
             row.appendChild(createSpan('json-boolean', String(value)));
             if (!isLast && SETTINGS.showCommas !== false) row.appendChild(createSpan('json-punct', ','));
+            row.appendChild(createCopyButtons(row));
             container.appendChild(row);
             return;
         }
@@ -115,6 +150,7 @@ const JsonTreeRenderer = (() => {
             row.insertBefore(createSpan('json-toggle-spacer', ''), row.firstChild);
             row.appendChild(createSpan('json-number', String(value)));
             if (!isLast && SETTINGS.showCommas !== false) row.appendChild(createSpan('json-punct', ','));
+            row.appendChild(createCopyButtons(row));
             container.appendChild(row);
             return;
         }
@@ -140,6 +176,7 @@ const JsonTreeRenderer = (() => {
                 row.appendChild(createSpan('json-string', `"${display}"`));
             }
             if (!isLast && SETTINGS.showCommas !== false) row.appendChild(createSpan('json-punct', ','));
+            row.appendChild(createCopyButtons(row));
             container.appendChild(row);
             return;
         }
@@ -158,6 +195,7 @@ const JsonTreeRenderer = (() => {
             row.appendChild(createSpan(bracketClass, openChar));
             row.appendChild(createSpan(bracketClass, closeChar));
             if (!isLast && SETTINGS.showCommas !== false) row.appendChild(createSpan('json-punct', ','));
+            row.appendChild(createCopyButtons(row));
             container.appendChild(row);
             return;
         }
@@ -182,6 +220,7 @@ const JsonTreeRenderer = (() => {
         if (!isLast && SETTINGS.showCommas !== false) summary.appendChild(createSpan('json-punct', ','));
         summary.style.display = collapsed ? 'inline' : 'none';
         row.appendChild(summary);
+        row.appendChild(createCopyButtons(row));
 
         row.classList.add('json-collapsible');
         container.appendChild(row);
@@ -458,6 +497,100 @@ const JsonTreeRenderer = (() => {
         root.addEventListener('mouseleave', hide);
     }
 
+    // -- Path preview bar -----------------------------------------------------
+
+    /**
+     * Parses a JSONPath string (e.g. $.users[0]["odd key"]) into an array of
+     * human-readable segment labels (e.g. ['$', 'users', '0', 'odd key']).
+     */
+    function pathToBreadcrumbs(path) {
+        const segs = [];
+        let i = 0;
+        while (i < path.length) {
+            if (path[i] === '$') {
+                segs.push('$');
+                i++;
+            } else if (path[i] === '.') {
+                i++;
+                let name = '';
+                while (i < path.length && path[i] !== '.' && path[i] !== '[') name += path[i++];
+                if (name) segs.push(name);
+            } else if (path[i] === '[') {
+                i++;
+                if (path[i] === '"') {
+                    // bracket-quoted key: ["key"]
+                    i++;
+                    let name = '';
+                    while (i < path.length) {
+                        if (path[i] === '\\' && i + 1 < path.length) { name += path[i + 1]; i += 2; }
+                        else if (path[i] === '"') { i++; break; }
+                        else name += path[i++];
+                    }
+                    if (path[i] === ']') i++;
+                    segs.push(name);
+                } else {
+                    // numeric index: [0]
+                    let idx = '';
+                    while (i < path.length && path[i] !== ']') idx += path[i++];
+                    if (path[i] === ']') i++;
+                    segs.push(idx);
+                }
+            } else {
+                i++;
+            }
+        }
+        return segs;
+    }
+
+    /**
+     * Creates (or reuses) a breadcrumb bar that shows the JSON path of the
+     * hovered `.json-row`.  Pass an existing `barEl` (e.g. a static element
+     * in the sidepanel HTML) to keep it permanently mounted; omit it and the
+     * bar is created and inserted immediately before `scrollEl` in its parent.
+     */
+    function setupPathPreview(scrollEl, barEl) {
+        const bar = barEl || (() => {
+            const b = createEl('div', 'jp-path-preview');
+            scrollEl.prepend(b);
+            return b;
+        })();
+
+        let currentPath = null;
+
+        function renderBreadcrumbs(path) {
+            if (path === currentPath) return;
+            currentPath = path;
+            const segs = pathToBreadcrumbs(path);
+            bar.replaceChildren();
+            segs.forEach((seg, i) => {
+                if (i > 0) {
+                    const sep = createEl('span', 'jp-bc-sep');
+                    sep.textContent = '\u203A'; // ›
+                    bar.appendChild(sep);
+                }
+                const crumb = createEl('span', i === segs.length - 1 ? 'jp-bc-crumb jp-bc-active' : 'jp-bc-crumb');
+                crumb.textContent = seg;
+                bar.appendChild(crumb);
+            });
+            bar.classList.add('has-path');
+        }
+
+        function clearBreadcrumbs() {
+            if (currentPath === null) return;
+            currentPath = null;
+            bar.classList.remove('has-path');
+            bar.replaceChildren();
+        }
+
+        scrollEl.addEventListener('mouseover', (e) => {
+            const row = e.target.closest('.json-row');
+            if (!row || !row._jpData || !row._jpData.path) { clearBreadcrumbs(); return; }
+            renderBreadcrumbs(row._jpData.path);
+        });
+
+        scrollEl.addEventListener('mouseleave', clearBreadcrumbs);
+    }
+
     // -- Type helpers ---------------------------------------------------------
 
     function getTypeName(val) {
@@ -505,7 +638,7 @@ const JsonTreeRenderer = (() => {
         createEl, createSpan,
         applyThemeVars,
         buildJsonTree,
-        setupContextMenu, setupPathTooltip,
+        setupContextMenu, setupPathTooltip, setupPathPreview,
         expandAncestors, highlightText, buildSearchRegex,
         getTypeName, getRootTypeBadge, labelFromObj,
         loadSettings, renderAllDescendants,

@@ -7,16 +7,25 @@
 <body>
   <nav>
     <ul id="json-tabs">
+      <li id="add-json-li">
+        <button id="add-json-btn" class="btn" data-tooltip="Add custom JSON">
+          <span class="i-plus"></span>
+        </button>
+      </li>
     </ul>
-    <div class="nav-actions">
-      <button id="add-json-btn" class="btn" data-tooltip="Add custom JSON">
-        <span class="i-plus"></span>
-      </button>
-      <a href="options.html" target="_blank" class="btn" data-tooltip="Open settings  Ctrl+,">
-        <span class="i-gear"></span>
-      </a>
-    </div>
   </nav>
+
+  <div id="panel-toolbar">
+    <button class="btn panel-toolbar-btn" id="toolbar-search-btn" data-tooltip="Search  Ctrl+F">
+      <span class="i-search-btn"></span>
+    </button>
+    <button class="btn panel-toolbar-btn" id="toolbar-raw-btn" data-tooltip="Display raw JSON">
+      <span class="i-raw"></span>
+    </button>
+    <a href="options.html" target="_blank" class="btn panel-toolbar-btn" data-tooltip="Open settings  Ctrl+,">
+      <span class="i-gear"></span>
+    </a>
+  </div>
 
   <div id="search-bar">
     <div id="search-input-wrap">
@@ -32,7 +41,9 @@
       <button id="search-close" data-tooltip="Close search  Esc"><span class="i-search-close"></span></button>
     </div>
   </div>
-  <main id="json-panels"></main>
+  <main id="json-panels">
+    <div class="jp-path-preview" id="jp-path-preview"></div>
+  </main>
   <script src="tree-render.js"></script>
   <script src="sidepanel.js"></script>
 </body>
